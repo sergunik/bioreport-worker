@@ -1,0 +1,17 @@
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile.dev
+    env_file: .env
+    volumes:
+      - .:/app
+    networks:
+      - bioreport
+
+networks:
+  bioreport:
+    driver: bridge
+
+volumes:
+  postgres_data:

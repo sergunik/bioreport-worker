@@ -39,3 +39,23 @@ class UploadedDocumentsRepository:
             mime_type=row["mime_type"],
             file_size_bytes=row["file_size_bytes"],
         )
+
+    def update_parsed_result(self, document_id: int, parsed_result: str) -> None:
+        """Persist extracted text into the parsed_result column.
+
+        Raises:
+            DocumentNotFoundError: if no document with this ID exists.
+        """
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET parsed_result = %s
+                    WHERE id = %s
+                    """,
+                    (parsed_result, document_id),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()

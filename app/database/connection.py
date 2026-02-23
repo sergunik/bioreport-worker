@@ -12,7 +12,7 @@ _pool: ConnectionPool | None = None
 
 def init_pool(settings: Settings) -> None:
     """Initialize the global connection pool from settings."""
-    global _pool  # noqa: PLW0603
+    global _pool
     conninfo = (
         f"host={settings.db_host} "
         f"port={settings.db_port} "
@@ -25,7 +25,7 @@ def init_pool(settings: Settings) -> None:
 
 def close_pool() -> None:
     """Close the global connection pool."""
-    global _pool  # noqa: PLW0603
+    global _pool
     if _pool is not None:
         _pool.close()
         _pool = None

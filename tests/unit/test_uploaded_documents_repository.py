@@ -19,16 +19,22 @@ def _make_row() -> dict:
     }
 
 
+def _mock_connection(mock_get_conn: MagicMock) -> tuple[MagicMock, MagicMock]:
+    """Wire up a mock connection + cursor and return (mock_conn, mock_cursor)."""
+    mock_cursor = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
+    mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
+    mock_get_conn.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_get_conn.return_value.__exit__ = MagicMock(return_value=False)
+    return mock_conn, mock_cursor
+
+
 class TestFindById:
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_returns_uploaded_document_when_found(self, mock_get_conn: MagicMock) -> None:
-        mock_cursor = MagicMock()
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.fetchone.return_value = _make_row()
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
-        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-        mock_get_conn.return_value.__enter__ = MagicMock(return_value=mock_conn)
-        mock_get_conn.return_value.__exit__ = MagicMock(return_value=False)
 
         repo = UploadedDocumentsRepository()
         result = repo.find_by_id(1)
@@ -43,15 +49,48 @@ class TestFindById:
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_raises_document_not_found_when_missing(self, mock_get_conn: MagicMock) -> None:
-        mock_cursor = MagicMock()
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.fetchone.return_value = None
-        mock_conn = MagicMock()
-        mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
-        mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
-        mock_get_conn.return_value.__enter__ = MagicMock(return_value=mock_conn)
-        mock_get_conn.return_value.__exit__ = MagicMock(return_value=False)
 
         repo = UploadedDocumentsRepository()
 
         with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
             repo.find_by_id(999)
+
+
+class TestUpdateParsedResult:
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_parsed_result(42, "extracted text")
+
+        mock_cursor.execute.assert_called_once()
+        sql, params = mock_cursor.execute.call_args.args
+        assert "UPDATE uploaded_documents" in sql
+        assert "parsed_result" in sql
+        assert params == ("extracted text", 42)
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
+        mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_parsed_result(1, "text")
+
+        mock_conn.commit.assert_called_once()
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_raises_document_not_found_when_no_rows_updated(
+        self, mock_get_conn: MagicMock
+    ) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 0
+
+        repo = UploadedDocumentsRepository()
+
+        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
+            repo.update_parsed_result(999, "text")

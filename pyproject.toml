@@ -26,6 +26,7 @@ dev = [
     "mypy>=1.13",
     "ruff>=0.8",
     "types-psycopg2",
+    "reportlab>=4.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -36,7 +37,7 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "C90"]
+select = ["E", "F", "I", "UP", "B", "C90", "RUF"]
 
 [tool.mypy]
 strict = true

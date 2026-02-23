@@ -9,7 +9,9 @@
       "Bash(docker compose:*)",
       "Bash(make lint:*)",
       "Bash(make test:*)",
-      "Bash(make up:*)"
+      "Bash(make up:*)",
+      "Bash(python3 -c \"import pymupdf; doc = pymupdf.open\\(stream=b'''', filetype=''pdf''\\); print\\(type\\(doc\\)\\)\")",
+      "Bash(python -m pytest:*)"
     ]
   }
 }

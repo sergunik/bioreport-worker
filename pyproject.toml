@@ -26,6 +26,7 @@ dev = [
     "mypy>=1.13",
     "ruff>=0.8",
     "types-psycopg2",
+    "reportlab>=4.0",
 ]
 
 [tool.setuptools.packages.find]

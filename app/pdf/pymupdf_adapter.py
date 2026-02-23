@@ -9,8 +9,8 @@ class PyMuPdfAdapter(BasePdfExtractor):
 
     def extract(self, pdf_bytes: bytes) -> str:
         try:
-            doc = pymupdf.open(stream=pdf_bytes, filetype="pdf")  # type: ignore[no-untyped-call]
-            pages = [page.get_text() for page in doc]  # type: ignore[attr-defined]
+            with pymupdf.open(stream=pdf_bytes, filetype="pdf") as doc:  # type: ignore[no-untyped-call]
+                pages = [page.get_text() for page in doc]
             return "\n".join(pages).strip()
         except PdfExtractionError:
             raise

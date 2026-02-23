@@ -10,7 +10,7 @@ class Processor:
     """Orchestrates the full document processing pipeline.
 
     Pipeline: load -> extract -> anonymize -> normalize -> persist.
-    Steps 3–7 are added in subsequent tasks.
+    Steps 3-7 are added in subsequent tasks.
     """
 
     def __init__(
@@ -39,8 +39,8 @@ class Processor:
             f"Extracted {len(extracted_text)} chars from document {uploaded_document_id}"
         )
 
-        # Steps 3–7: implemented in subsequent tasks
-        raise NotImplementedError("Steps 3–7 not yet implemented")
+        # Steps 3-7: implemented in subsequent tasks
+        raise NotImplementedError("Steps 3-7 not yet implemented")
 
 
 def build_processor(settings: Settings) -> Processor:

@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from app.config.settings import Settings
 from app.pdf.base import BasePdfExtractor
 from app.pdf.pdfplumber_adapter import PdfPlumberAdapter
@@ -7,7 +9,7 @@ from app.pdf.pymupdf_adapter import PyMuPdfAdapter
 class PdfExtractorFactory:
     """Creates the correct PDF extractor based on settings."""
 
-    ADAPTERS: dict[str, type[BasePdfExtractor]] = {
+    ADAPTERS: ClassVar[dict[str, type[BasePdfExtractor]]] = {
         "pdfplumber": PdfPlumberAdapter,
         "pymupdf": PyMuPdfAdapter,
     }

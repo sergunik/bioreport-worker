@@ -61,7 +61,7 @@ class TestFindById:
 class TestUpdateParsedResult:
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
-        mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()

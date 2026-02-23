@@ -3,7 +3,7 @@ COMPOSE := docker compose
 .PHONY: up down exec lint lint-fix test int-test
 
 up:
-	$(COMPOSE) up -d --build
+	$(COMPOSE) up -d
 
 down:
 	$(COMPOSE) down

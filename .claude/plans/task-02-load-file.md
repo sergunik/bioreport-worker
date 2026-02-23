@@ -10,6 +10,8 @@ Implement the `Processor` class with only Step 1 active. Steps 2–7 are stubbed
 
 All other pipeline steps remain unimplemented until subsequent tasks.
 
+Document model: a single domain type `UploadedDocument` in `app/processor/models.py`; the repository returns it (no separate DB-row document model).
+
 ---
 
 ## Deliverables
@@ -69,12 +71,14 @@ CREATE TABLE pdf_jobs (
 
 ### 1. `app/processor/models.py`
 
+Single domain model for documents: `UploadedDocument` (no separate DB-row model; repository returns this).
+
 ```python
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class UploadedDocument:
+    """Domain model for an uploaded document (subset of uploaded_documents columns)."""
     id: int
     uuid: str
     user_id: int

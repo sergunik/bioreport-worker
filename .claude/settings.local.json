@@ -8,7 +8,8 @@
       "Bash(pytest:*)",
       "Bash(docker compose:*)",
       "Bash(make lint:*)",
-      "Bash(make test:*)"
+      "Bash(make test:*)",
+      "Bash(make up:*)"
     ]
   }
 }

@@ -6,6 +6,7 @@ services:
     env_file: .env
     volumes:
       - .:/app
+      - ./files:/app/files:ro
     networks:
       - bioreport
 

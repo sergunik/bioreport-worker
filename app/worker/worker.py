@@ -38,8 +38,6 @@ class Worker:
                 if job:
                     self._job_runner.run(job)
                     jobs_done += 1
-                    if max_jobs is not None and jobs_done >= max_jobs:
-                        break
                 else:
                     Log.debug("No jobs available, sleeping")
                     time.sleep(self._settings.job_poll_interval_seconds)

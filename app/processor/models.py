@@ -19,7 +19,7 @@ class ProcessorResult:
     """Accumulates data as the document moves through pipeline steps."""
 
     document_id: int
-    raw_bytes: bytes = field(default_factory=bytes)
+    raw_bytes: bytes = b""
     extracted_text: str = ""
     anonymized_text: str = ""
     artifacts: dict[str, list[dict[str, str]]] = field(

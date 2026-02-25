@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 
 pytest.importorskip("icu")
@@ -19,16 +17,10 @@ class TestProcessorPipeline:
     ) -> None:
         document_id, _doc_uuid, files_root = sample_pdf_on_disk
         processor = build_processor(test_settings, files_root=files_root)
-        original_process = processor.process
-
-        def process_without_raise(uploaded_document_id: int, job_id: int) -> None:
-            try:
-                original_process(uploaded_document_id, job_id)
-            except NotImplementedError:
-                pass
-
-        with patch.object(processor, "process", process_without_raise):
+        try:
             processor.process(document_id, 1)
+        except NotImplementedError:
+            pass
 
         with db_conn.cursor() as cur:
             cur.execute(

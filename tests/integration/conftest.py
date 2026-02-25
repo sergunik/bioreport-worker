@@ -129,7 +129,6 @@ def seed_job(
 @pytest.fixture
 def seed_account(
     db_conn: psycopg.Connection[Any],
-    integration_cleanup: list[tuple[str, int]],
 ) -> Generator[int, None, None]:
     account_id, previous_sensitive_words = _choose_existing_account_id(db_conn)
     with db_conn.cursor() as cur:
@@ -152,7 +151,6 @@ def seed_account(
 @pytest.fixture
 def seed_account_with_words(
     db_conn: psycopg.Connection[Any],
-    integration_cleanup: list[tuple[str, int]],
 ) -> Generator[int, None, None]:
     account_id, previous_sensitive_words = _choose_existing_account_id(db_conn)
     with db_conn.cursor() as cur:

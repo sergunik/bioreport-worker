@@ -129,7 +129,7 @@ class Anonymizer(BaseAnonymizer):
             )
 
         # Step 4 — Map to original positions, merge overlapping
-        original_spans = self._map_to_original(detections, trans_to_orig, normalized)
+        original_spans = self._map_to_original(detections, trans_to_orig)
 
         # Step 5 — Replace + generate artifacts
         result = self._replace(normalized, original_spans)
@@ -239,7 +239,6 @@ class Anonymizer(BaseAnonymizer):
         self,
         detections: list[_Detection],
         trans_to_orig: list[int],
-        original: str,
     ) -> list[tuple[str, int, int]]:
         """Map transliterated spans to original-text spans, merge overlaps.
 

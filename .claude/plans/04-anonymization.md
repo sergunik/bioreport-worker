@@ -90,7 +90,7 @@ Each method must be isolated, testable, and independently extendable.
 
 - Receive plain text extracted from PDF.
 - Validate encoding (UTF-8).
-- Normalize Unicode (NFKD or equivalent).
+- Normalize Unicode.
 
 
 ### STEP 2 – Transliteration (Full Text)

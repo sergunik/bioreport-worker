@@ -157,10 +157,14 @@ class TestUpdateAnonymisedResult:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
-        artifacts = [{"type": "PERSON", "original": "John", "replacement": "PERSON_1"}]
+        artifacts_payload = {
+            "artifacts": [
+                {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
+            ]
+        }
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(42, "anon text", artifacts)
+        repo.update_anonymised_result(42, "anon text", artifacts_payload)
 
         mock_cursor.execute.assert_called_once()
         sql, params = mock_cursor.execute.call_args.args
@@ -169,6 +173,9 @@ class TestUpdateAnonymisedResult:
         assert "anonymised_artifacts" in sql
         assert "transliteration_mapping" in sql
         assert params[0] == "anon text"
+        assert params[1].obj["artifacts"] == [
+            {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
+        ]
         assert params[3] == 42
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
@@ -177,7 +184,9 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(1, "text", [], transliteration_mapping=[0, 1, 2])
+        repo.update_anonymised_result(
+            1, "text", {"artifacts": []}, transliteration_mapping=[0, 1, 2]
+        )
 
         sql, params = mock_cursor.execute.call_args.args
         assert "transliteration_mapping" in sql
@@ -191,7 +200,9 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(1, "text", [], transliteration_mapping=None)
+        repo.update_anonymised_result(
+            1, "text", {"artifacts": []}, transliteration_mapping=None
+        )
 
         sql, params = mock_cursor.execute.call_args.args
         assert "transliteration_mapping" in sql
@@ -203,7 +214,7 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(1, "text", [])
+        repo.update_anonymised_result(1, "text", {"artifacts": []})
 
         mock_conn.commit.assert_called_once()
 
@@ -217,4 +228,4 @@ class TestUpdateAnonymisedResult:
         repo = UploadedDocumentsRepository()
 
         with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_anonymised_result(999, "text", [])
+            repo.update_anonymised_result(999, "text", {"artifacts": []})

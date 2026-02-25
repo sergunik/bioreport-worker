@@ -20,7 +20,7 @@ def init_pool(settings: Settings) -> None:
         f"user={settings.db_username} "
         f"password={settings.db_password}"
     )
-    _pool = ConnectionPool(conninfo, min_size=1, max_size=10)
+    _pool = ConnectionPool(conninfo, min_size=1, max_size=10, open=True)
 
 
 def close_pool() -> None:

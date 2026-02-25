@@ -1,4 +1,4 @@
-from dataclasses import asdict
+from pathlib import Path
 
 from app.anonymization.base import BaseAnonymizer
 from app.anonymization.factory import AnonymizerFactory
@@ -7,7 +7,9 @@ from app.database.repositories.uploaded_documents_repository import UploadedDocu
 from app.logging.logger import Log
 from app.pdf.base import BasePdfExtractor
 from app.pdf.factory import PdfExtractorFactory
+from app.processor.artifacts_extractor import ArtifactsExtractor
 from app.processor.file_loader import FileLoader
+from app.processor.models import ProcessorResult
 
 
 class Processor:
@@ -23,11 +25,13 @@ class Processor:
         doc_repo: UploadedDocumentsRepository,
         pdf_extractor: BasePdfExtractor,
         anonymizer: BaseAnonymizer,
+        artifacts_extractor: ArtifactsExtractor,
     ) -> None:
         self._file_loader = file_loader
         self._doc_repo = doc_repo
         self._pdf_extractor = pdf_extractor
         self._anonymizer = anonymizer
+        self._artifacts_extractor = artifacts_extractor
 
     def process(self, uploaded_document_id: int, job_id: int) -> None:
         """Run the full processing pipeline for a document."""
@@ -51,14 +55,24 @@ class Processor:
             f"Loaded {len(sensitive_words)} sensitive words for user {document.user_id}"
         )
 
-        # Step 4: Anonymize and persist
+        # Step 3 (cont.): Anonymize
         anonymization_result = self._anonymizer.anonymize(
             extracted_text, sensitive_words=sensitive_words
         )
+
+        # Step 4: Extract artifacts payload, accumulate into result, persist
+        artifacts_payload = self._artifacts_extractor.extract(anonymization_result)
+        result = ProcessorResult(
+            document_id=uploaded_document_id,
+            raw_bytes=raw_bytes,
+            extracted_text=extracted_text,
+            anonymized_text=anonymization_result.anonymized_text,
+            artifacts=artifacts_payload,
+        )
         self._doc_repo.update_anonymised_result(
-            uploaded_document_id,
-            anonymised_result=anonymization_result.anonymized_text,
-            anonymised_artifacts=[asdict(a) for a in anonymization_result.artifacts],
+            result.document_id,
+            anonymised_result=result.anonymized_text,
+            artifacts_payload=result.artifacts,
             transliteration_mapping=anonymization_result.transliteration_mapping,
         )
         Log.info(
@@ -70,15 +84,20 @@ class Processor:
         raise NotImplementedError("Steps 5-7 not yet implemented")
 
 
-def build_processor(settings: Settings) -> Processor:
+def build_processor(
+    settings: Settings,
+    files_root: Path | None = None,
+) -> Processor:
     """Build a Processor with all required adapters."""
-    file_loader = FileLoader()
+    file_loader = FileLoader(files_root=files_root)
     doc_repo = UploadedDocumentsRepository()
     pdf_extractor = PdfExtractorFactory.create(settings)
     anonymizer = AnonymizerFactory.create(settings)
+    artifacts_extractor = ArtifactsExtractor()
     return Processor(
         file_loader=file_loader,
         doc_repo=doc_repo,
         pdf_extractor=pdf_extractor,
         anonymizer=anonymizer,
+        artifacts_extractor=artifacts_extractor,
     )

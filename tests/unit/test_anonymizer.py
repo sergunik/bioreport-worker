@@ -73,9 +73,7 @@ class TestDictionaryDetection:
             sensitive_words=["ivan"],
         )
         # "ivan" inside "ivanovich" should NOT match (word boundary check)
-        assert result.artifacts == [] or all(
-            a.original.lower() != "ivan" for a in result.artifacts
-        )
+        assert all(a.original.lower() != "ivan" for a in result.artifacts)
 
     def test_empty_dictionary_no_detection(self) -> None:
         anonymizer = Anonymizer()

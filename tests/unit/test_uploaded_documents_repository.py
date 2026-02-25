@@ -184,6 +184,20 @@ class TestUpdateAnonymisedResult:
         assert params[2] is not None
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_stores_null_when_transliteration_mapping_is_none(
+        self, mock_get_conn: MagicMock
+    ) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_anonymised_result(1, "text", [], transliteration_mapping=None)
+
+        sql, params = mock_cursor.execute.call_args.args
+        assert "transliteration_mapping" in sql
+        assert params[2] is None
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
         mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1

@@ -74,6 +74,11 @@ class UploadedDocumentsRepository:
         Raises:
             DocumentNotFoundError: if no document with this ID exists.
         """
+        transliteration_value = (
+            Jsonb(transliteration_mapping)
+            if transliteration_mapping is not None
+            else None
+        )
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -87,7 +92,7 @@ class UploadedDocumentsRepository:
                     (
                         anonymised_result,
                         Jsonb(anonymised_artifacts),
-                        Jsonb(transliteration_mapping) if transliteration_mapping else None,
+                        transliteration_value,
                         document_id,
                     ),
                 )

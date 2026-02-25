@@ -207,6 +207,34 @@ class Anonymizer(BaseAnonymizer):
     # Step 4 — Map spans to original text + merge overlaps
     # ------------------------------------------------------------------
 
+    def _detection_to_original_span(
+        self,
+        d: _Detection,
+        trans_to_orig: list[int],
+    ) -> tuple[int, int] | None:
+        """Map a detection (transliterated indices) to original (start, end_exclusive)."""
+        if d.trans_start >= len(trans_to_orig) or d.trans_end < 1:
+            return None
+        orig_start = trans_to_orig[d.trans_start]
+        last_trans_idx = min(d.trans_end - 1, len(trans_to_orig) - 1)
+        orig_end = trans_to_orig[last_trans_idx] + 1
+        return (orig_start, orig_end)
+
+    def _merge_overlapping_spans(
+        self,
+        spans: list[tuple[str, int, int]],
+    ) -> list[tuple[str, int, int]]:
+        """Sort by start then end descending; merge overlaps, keeping longer span."""
+        spans = sorted(spans, key=lambda x: (x[1], -x[2]))
+        merged: list[tuple[str, int, int]] = []
+        for entity_type, start, end in spans:
+            if merged and start < merged[-1][2]:
+                _prev_type, prev_start, prev_end = merged[-1]
+                merged[-1] = (_prev_type, prev_start, max(prev_end, end))
+            else:
+                merged.append((entity_type, start, end))
+        return merged
+
     def _map_to_original(
         self,
         detections: list[_Detection],
@@ -218,39 +246,12 @@ class Anonymizer(BaseAnonymizer):
         Returns sorted, non-overlapping (entity_type, orig_start, orig_end).
         """
         raw: list[tuple[str, int, int]] = []
-
         for d in detections:
-            if d.trans_start >= len(trans_to_orig) or d.trans_end < 1:
-                continue
-            orig_start = trans_to_orig[d.trans_start]
-            # trans_end is exclusive; map the last inclusive char
-            orig_end_idx = min(d.trans_end - 1, len(trans_to_orig) - 1)
-            orig_end_char = trans_to_orig[orig_end_idx]
-            # Make orig_end exclusive (one past the last original char)
-            orig_end = orig_end_char + 1
-            # Extend to cover the full original character span
-            while orig_end < len(original) and orig_end < len(original) and (
-                d.trans_end < len(trans_to_orig)
-                and orig_end <= trans_to_orig[d.trans_end - 1]
-            ):
-                orig_end += 1
-
-            raw.append((d.entity_type, orig_start, orig_end))
-
-        # Sort by start, then by end descending (prefer longer spans)
-        raw.sort(key=lambda x: (x[1], -x[2]))
-
-        # Merge overlapping spans — keep the longer / first-seen type
-        merged: list[tuple[str, int, int]] = []
-        for entity_type, start, end in raw:
-            if merged and start < merged[-1][2]:
-                # Overlapping — extend if longer
-                prev_type, prev_start, prev_end = merged[-1]
-                merged[-1] = (prev_type, prev_start, max(prev_end, end))
-            else:
-                merged.append((entity_type, start, end))
-
-        return merged
+            span = self._detection_to_original_span(d, trans_to_orig)
+            if span is not None:
+                orig_start, orig_end = span
+                raw.append((d.entity_type, orig_start, orig_end))
+        return self._merge_overlapping_spans(raw)
 
     # ------------------------------------------------------------------
     # Step 5 — Replacement + artifact generation

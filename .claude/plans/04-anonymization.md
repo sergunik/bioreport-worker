@@ -265,7 +265,7 @@ System must produce:
 - anonymized_text
 - anonymized_artifacts (replaced entities with original values, types, and positions)
 
-Propper logging is required.
+Proper logging is required.
 
 
 ## 8. AI Forwarding (Stub)

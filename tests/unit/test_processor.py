@@ -191,17 +191,17 @@ class TestProcessStep4Anonymization:
             call_order.append("update_parsed_result"),
             None,
         )[1]
-        mock_repo.get_sensitive_words.side_effect = lambda *a: (
+        mock_repo.get_sensitive_words.side_effect = lambda *_: (
             call_order.append("get_sensitive_words"),
             [],
         )[1]
-        mock_anonymizer.anonymize.side_effect = lambda *a, **kw: (
+        mock_anonymizer.anonymize.side_effect = lambda *_, **__: (
             call_order.append("anonymize"),
             AnonymizationResult(
                 anonymized_text="anon", artifacts=[], transliteration_mapping=[]
             ),
         )[1]
-        mock_repo.update_anonymised_result.side_effect = lambda *a, **kw: (
+        mock_repo.update_anonymised_result.side_effect = lambda *_, **__: (
             call_order.append("update_anonymised_result"),
             None,
         )[1]

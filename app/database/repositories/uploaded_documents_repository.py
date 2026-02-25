@@ -80,6 +80,10 @@ class UploadedDocumentsRepository:
         Raises:
             DocumentNotFoundError: if no document with this ID exists.
         """
+        artifacts = artifacts_payload.get("artifacts")
+        if not isinstance(artifacts, list):
+            raise ValueError("artifacts_payload must contain an 'artifacts' list")
+
         transliteration_value = (
             Jsonb(transliteration_mapping)
             if transliteration_mapping is not None

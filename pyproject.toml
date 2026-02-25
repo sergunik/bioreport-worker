@@ -44,5 +44,5 @@ python_version = "3.12"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "integration: marks tests as integration (require PostgreSQL test DB and optional env BIOREPORT_TEST_DB_*)",
+    "integration: marks tests as integration (require PostgreSQL test DB and optional env DB_*)",
 ]

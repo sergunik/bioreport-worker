@@ -78,6 +78,7 @@ def seed_document(
     integration_cleanup: list[tuple[str, int]],
 ) -> tuple[int, str]:
     doc_uuid = str(uuid.uuid4())
+    account_id, _ = _choose_existing_account_id(db_conn)
     with db_conn.cursor() as cur:
         cur.execute(
             """
@@ -86,7 +87,7 @@ def seed_document(
             VALUES (%s::uuid, %s, %s, %s, %s, %s)
             RETURNING id
             """,
-            (doc_uuid, 1, "local", 1024, "application/pdf", "a" * 64),
+            (doc_uuid, account_id, "local", 1024, "application/pdf", "a" * 64),
         )
         row = cur.fetchone()
         assert row is not None

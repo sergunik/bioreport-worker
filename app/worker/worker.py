@@ -26,6 +26,8 @@ class Worker:
 
         If max_jobs is set, stop after processing that many jobs (for testing).
         """
+        if max_jobs is not None and max_jobs < 0:
+            raise ValueError("max_jobs must be >= 0")
         Log.info("Worker started, polling for jobs")
         jobs_done = 0
         try:

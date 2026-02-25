@@ -4,7 +4,7 @@ from app.anonymization.models import AnonymizationResult, Artifact
 class ArtifactsExtractor:
     """Converts anonymization artifacts to a JSON-serializable structure."""
 
-    def extract(self, result: AnonymizationResult) -> dict[str, object]:
+    def extract(self, result: AnonymizationResult) -> dict[str, list[dict[str, str]]]:
         """Transform AnonymizationResult artifacts into JSONB-ready dict.
 
         Returns:

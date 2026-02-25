@@ -22,5 +22,7 @@ class ProcessorResult:
     raw_bytes: bytes = field(default_factory=bytes)
     extracted_text: str = ""
     anonymized_text: str = ""
-    artifacts: dict[str, object] = field(default_factory=dict)
+    artifacts: dict[str, list[dict[str, str]]] = field(
+        default_factory=lambda: {"artifacts": []}
+    )
     normalized_result: dict[str, object] = field(default_factory=dict)

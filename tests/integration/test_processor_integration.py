@@ -41,10 +41,10 @@ class TestProcessorPipeline:
             )
             row = cur.fetchone()
         assert row is not None
-        assert row[0] is not None and len(row[0]) >= 0
-        assert row[1] is not None
-        assert row[2] is not None
-        assert row[3] is not None
+        assert isinstance(row[0], str) and row[0].strip() != ""
+        assert isinstance(row[1], str) and row[1].strip() != ""
+        assert isinstance(row[2], dict) and "artifacts" in row[2]
+        assert isinstance(row[3], list)
 
     def test_process_raises_document_not_found(self, seed_job, test_settings: Settings) -> None:
         processor = build_processor(test_settings)

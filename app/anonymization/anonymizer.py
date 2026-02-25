@@ -6,7 +6,7 @@ Processing flow:
 3. Build character-level position mapping (transliterated → original).
 4. Detect PII on transliterated text:
    a. Exact user-dictionary matching (token-level).
-   b. Regex patterns (emails, phones, numeric IDs).
+   b. Regex patterns (emails, dates, phones, numeric IDs).
 5. Map detected spans back to original text.
 6. Replace PII in original text with deterministic placeholders.
 7. Return anonymized text + structured artifacts.
@@ -50,9 +50,12 @@ class Anonymizer(BaseAnonymizer):
     _EMAIL_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"[\w.\-+]+@[\w.\-]+\.\w{2,}",
     )
+    _DATE_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"(?<!\d)\d{1,2}\.\d{1,2}\.\d{4}(?:\s+\d{1,2}(?::\d{2})?)?(?!\d)",
+    )
     _PHONE_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"(?<!\w)"
-        r"\+?\d[\d\s\-().]{5,18}\d"
+        r"\+?\d[\d\s\-()]{5,18}\d"
         r"(?!\w)",
     )
     _ID_RE: ClassVar[re.Pattern[str]] = re.compile(
@@ -61,6 +64,7 @@ class Anonymizer(BaseAnonymizer):
 
     _REGEX_RULES: ClassVar[list[tuple[str, re.Pattern[str]]]] = [
         ("EMAIL", _EMAIL_RE),
+        ("DATE", _DATE_RE),
         ("PHONE", _PHONE_RE),
         ("ID", _ID_RE),
     ]
@@ -281,7 +285,7 @@ class Anonymizer(BaseAnonymizer):
     # ------------------------------------------------------------------
 
     def _detect_regex(self, transliterated: str) -> list[_Detection]:
-        """Find emails, phones, and numeric IDs via regex."""
+        """Find emails, dates, phones, and numeric IDs via regex."""
         detections: list[_Detection] = []
         for entity_type, pattern in self._REGEX_RULES:
             for m in pattern.finditer(transliterated):

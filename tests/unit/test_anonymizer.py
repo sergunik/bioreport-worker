@@ -300,9 +300,10 @@ class TestReplacementConsistency:
 class TestTransliterationMapping:
     def test_mapping_length_matches_transliterated_text(self) -> None:
         anonymizer = Anonymizer()
-        result = anonymizer.anonymize("Hello world")
-        # Mapping should have one entry per transliterated character
-        assert len(result.transliteration_mapping) > 0
+        source_text = "Hello world"
+        result = anonymizer.anonymize(source_text)
+        transliterated = anonymizer._transliterator.transliterate(source_text)
+        assert len(result.transliteration_mapping) == len(transliterated)
 
     def test_mapping_values_within_original_range(self) -> None:
         anonymizer = Anonymizer()
@@ -317,6 +318,81 @@ class TestTransliterationMapping:
         mapping = result.transliteration_mapping
         for i in range(1, len(mapping)):
             assert mapping[i] >= mapping[i - 1]
+
+    def test_mapping_length_matches_full_transliteration_for_context_case(self) -> None:
+        anonymizer = Anonymizer()
+        source_text = "Євген"
+        result = anonymizer.anonymize(source_text)
+        transliterated = anonymizer._transliterator.transliterate(source_text)
+        assert len(result.transliteration_mapping) == len(transliterated)
+
+
+class TestContextAwareTransliteration:
+    def test_dictionary_match_uses_full_string_transliteration(self) -> None:
+        anonymizer = Anonymizer()
+        class ContextAwareStubTransliterator:
+            def transliterate(self, text: str) -> str:
+                if text == "AB":
+                    return "cb"
+                if text == "A":
+                    return "a"
+                if text == "B":
+                    return "b"
+                return text.lower()
+
+        anonymizer._transliterator = ContextAwareStubTransliterator()  # type: ignore[assignment]
+
+        result = anonymizer.anonymize("AB", sensitive_words=["cb"])
+        person_artifacts = [artifact for artifact in result.artifacts if artifact.type == "PERSON"]
+        assert len(person_artifacts) == 1
+        assert person_artifacts[0].original == "AB"
+
+    def test_ukrainian_context_sensitive_letters_regression(self) -> None:
+        anonymizer = Anonymizer()
+        candidate_words = [
+            "Євген",
+            "єнот",
+            "Юрій",
+            "юнак",
+            "Яна",
+            "ящірка",
+            "Підємець",
+        ]
+
+        selected_word: str | None = None
+        selected_transliteration: str | None = None
+        for word in candidate_words:
+            full_transliterated = anonymizer._transliterator.transliterate(word)
+            per_char_transliterated = "".join(
+                anonymizer._transliterator.transliterate(ch) for ch in word
+            )
+            if full_transliterated != per_char_transliterated:
+                selected_word = word
+                selected_transliteration = full_transliterated
+                break
+
+        if selected_word is None or selected_transliteration is None:
+            pytest.skip("Current ICU build shows no context difference for selected words")
+
+        result = anonymizer.anonymize(
+            f"Пацієнт {selected_word}",
+            sensitive_words=[selected_transliteration],
+        )
+        person_artifacts = [artifact for artifact in result.artifacts if artifact.type == "PERSON"]
+        assert len(person_artifacts) == 1
+        assert person_artifacts[0].original == selected_word
+
+    def test_ukrainian_name_marian_with_apostrophe(self) -> None:
+        anonymizer = Anonymizer()
+        marian = "\u041c\u0430\u0440'\u044f\u043d"
+        source_text = f"Пацієнт {marian}"
+        dictionary_word = anonymizer._transliterator.transliterate(marian)
+
+        result = anonymizer.anonymize(source_text, sensitive_words=[dictionary_word])
+
+        person_artifacts = [artifact for artifact in result.artifacts if artifact.type == "PERSON"]
+        assert len(person_artifacts) == 1
+        assert person_artifacts[0].original == marian
 
 
 class TestArtifactFields:

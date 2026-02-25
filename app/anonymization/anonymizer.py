@@ -17,6 +17,7 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 from typing import ClassVar
 
 import icu  # type: ignore[import-untyped]
@@ -143,21 +144,105 @@ class Anonymizer(BaseAnonymizer):
     # ------------------------------------------------------------------
 
     def _transliterate_with_mapping(self, text: str) -> tuple[str, list[int]]:
-        """Transliterate *text* character-by-character via ICU.
+        """Transliterate *text* and map transliterated positions to original indices.
 
         Returns:
             (transliterated_text, trans_to_orig) where trans_to_orig[j]
             is the index in *text* that produced transliterated char j.
         """
+        if not text:
+            return "", []
+
+        full_transliterated = self._transliterator.transliterate(text)
+        per_char_transliterated, per_char_to_orig = self._transliterate_per_character(text)
+
+        if full_transliterated == per_char_transliterated:
+            return full_transliterated, per_char_to_orig
+
+        full_to_per_char, uncertain_positions = self._align_full_to_per_character(
+            full_transliterated,
+            per_char_transliterated,
+        )
+        full_to_orig = self._compose_full_to_original_mapping(
+            full_to_per_char,
+            uncertain_positions,
+            per_char_to_orig,
+            len(text),
+        )
+        return full_transliterated, full_to_orig
+
+    def _transliterate_per_character(self, text: str) -> tuple[str, list[int]]:
         parts: list[str] = []
         trans_to_orig: list[int] = []
-
         for orig_idx, ch in enumerate(text):
-            t = self._transliterator.transliterate(ch)
-            parts.append(t)
-            trans_to_orig.extend([orig_idx] * len(t))
-
+            part = self._transliterator.transliterate(ch)
+            parts.append(part)
+            trans_to_orig.extend([orig_idx] * len(part))
         return "".join(parts), trans_to_orig
+
+    def _align_full_to_per_character(
+        self,
+        full_transliterated: str,
+        per_char_transliterated: str,
+    ) -> tuple[list[int], list[bool]]:
+        if not full_transliterated:
+            return [], []
+
+        matcher = SequenceMatcher(
+            a=full_transliterated,
+            b=per_char_transliterated,
+            autojunk=False,
+        )
+        full_to_per_char: list[int] = [0] * len(full_transliterated)
+        uncertain_positions: list[bool] = [False] * len(full_transliterated)
+        max_per_index = max(len(per_char_transliterated) - 1, 0)
+
+        for tag, full_start, full_end, per_start, _per_end in matcher.get_opcodes():
+            if tag == "equal":
+                for shift in range(full_end - full_start):
+                    full_to_per_char[full_start + shift] = per_start + shift
+                continue
+
+            fallback_per_index = min(per_start, max_per_index)
+            for full_idx in range(full_start, full_end):
+                full_to_per_char[full_idx] = fallback_per_index
+                uncertain_positions[full_idx] = True
+
+        return full_to_per_char, uncertain_positions
+
+    def _compose_full_to_original_mapping(
+        self,
+        full_to_per_char: list[int],
+        uncertain_positions: list[bool],
+        per_char_to_orig: list[int],
+        original_length: int,
+    ) -> list[int]:
+        if not full_to_per_char:
+            return []
+
+        if original_length == 0:
+            return [0] * len(full_to_per_char)
+
+        if not per_char_to_orig:
+            return [0] * len(full_to_per_char)
+
+        full_to_orig: list[int] = [0] * len(full_to_per_char)
+        last_valid_orig = 0
+        max_orig_index = original_length - 1
+        max_per_index = len(per_char_to_orig) - 1
+
+        for full_idx, per_idx in enumerate(full_to_per_char):
+            bounded_per_idx = min(max(per_idx, 0), max_per_index)
+            mapped_orig = per_char_to_orig[bounded_per_idx]
+            bounded_orig = min(max(mapped_orig, 0), max_orig_index)
+            if uncertain_positions[full_idx] and full_idx > 0:
+                bounded_orig = max(bounded_orig, last_valid_orig)
+            if full_idx > 0:
+                bounded_orig = max(bounded_orig, full_to_orig[full_idx - 1])
+            full_to_orig[full_idx] = bounded_orig
+            last_valid_orig = bounded_orig
+
+        return full_to_orig
 
     # ------------------------------------------------------------------
     # Step 3a — Dictionary detection

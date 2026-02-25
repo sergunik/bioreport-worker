@@ -1,4 +1,7 @@
+from typing import Any
+
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from app.database.connection import get_connection
 from app.processor.exceptions import DocumentNotFoundError
@@ -39,6 +42,63 @@ class UploadedDocumentsRepository:
             mime_type=row["mime_type"],
             file_size_bytes=row["file_size_bytes"],
         )
+
+    def get_sensitive_words(self, user_id: int) -> list[str]:
+        """Fetch sensitive words for a user from the accounts table.
+
+        Returns lowercase tokens. Empty list if user has no dictionary.
+        """
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT sensitive_words FROM accounts WHERE id = %s",
+                    (user_id,),
+                )
+                row = cur.fetchone()
+
+        if row is None or row[0] is None:
+            return []
+
+        raw: str = row[0]
+        return raw.lower().split()
+
+    def update_anonymised_result(
+        self,
+        document_id: int,
+        anonymised_result: str,
+        anonymised_artifacts: list[dict[str, Any]],
+        transliteration_mapping: list[int] | None = None,
+    ) -> None:
+        """Persist anonymized text, artifact mappings, and transliteration mapping.
+
+        Raises:
+            DocumentNotFoundError: if no document with this ID exists.
+        """
+        transliteration_value = (
+            Jsonb(transliteration_mapping)
+            if transliteration_mapping is not None
+            else None
+        )
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET anonymised_result = %s,
+                        anonymised_artifacts = %s,
+                        transliteration_mapping = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        anonymised_result,
+                        Jsonb(anonymised_artifacts),
+                        transliteration_value,
+                        document_id,
+                    ),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
 
     def update_parsed_result(self, document_id: int, parsed_result: str) -> None:
         """Persist extracted text into the parsed_result column.

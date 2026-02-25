@@ -58,6 +58,62 @@ class TestFindById:
             repo.find_by_id(999)
 
 
+class TestGetSensitiveWords:
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_returns_words_when_found(self, mock_get_conn: MagicMock) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.fetchone.return_value = ("ivan petrenko",)
+
+        repo = UploadedDocumentsRepository()
+        result = repo.get_sensitive_words(10)
+
+        assert result == ["ivan", "petrenko"]
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_returns_empty_list_when_user_not_found(self, mock_get_conn: MagicMock) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.fetchone.return_value = None
+
+        repo = UploadedDocumentsRepository()
+        result = repo.get_sensitive_words(999)
+
+        assert result == []
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_returns_empty_list_when_dictionary_is_null(self, mock_get_conn: MagicMock) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.fetchone.return_value = (None,)
+
+        repo = UploadedDocumentsRepository()
+        result = repo.get_sensitive_words(10)
+
+        assert result == []
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_lowercases_dictionary_words(self, mock_get_conn: MagicMock) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.fetchone.return_value = ("Ivan PETRENKO",)
+
+        repo = UploadedDocumentsRepository()
+        result = repo.get_sensitive_words(10)
+
+        assert result == ["ivan", "petrenko"]
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_executes_correct_query(self, mock_get_conn: MagicMock) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.fetchone.return_value = ("word",)
+
+        repo = UploadedDocumentsRepository()
+        repo.get_sensitive_words(42)
+
+        mock_cursor.execute.assert_called_once()
+        sql, params = mock_cursor.execute.call_args.args
+        assert "accounts" in sql
+        assert "sensitive_words" in sql
+        assert params == (42,)
+
+
 class TestUpdateParsedResult:
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
@@ -94,3 +150,71 @@ class TestUpdateParsedResult:
 
         with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
             repo.update_parsed_result(999, "text")
+
+
+class TestUpdateAnonymisedResult:
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+        artifacts = [{"type": "PERSON", "original": "John", "replacement": "PERSON_1"}]
+
+        repo = UploadedDocumentsRepository()
+        repo.update_anonymised_result(42, "anon text", artifacts)
+
+        mock_cursor.execute.assert_called_once()
+        sql, params = mock_cursor.execute.call_args.args
+        assert "UPDATE uploaded_documents" in sql
+        assert "anonymised_result" in sql
+        assert "anonymised_artifacts" in sql
+        assert "transliteration_mapping" in sql
+        assert params[0] == "anon text"
+        assert params[3] == 42
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_passes_transliteration_mapping(self, mock_get_conn: MagicMock) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_anonymised_result(1, "text", [], transliteration_mapping=[0, 1, 2])
+
+        sql, params = mock_cursor.execute.call_args.args
+        assert "transliteration_mapping" in sql
+        assert params[2] is not None
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_stores_null_when_transliteration_mapping_is_none(
+        self, mock_get_conn: MagicMock
+    ) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_anonymised_result(1, "text", [], transliteration_mapping=None)
+
+        sql, params = mock_cursor.execute.call_args.args
+        assert "transliteration_mapping" in sql
+        assert params[2] is None
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
+        mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_anonymised_result(1, "text", [])
+
+        mock_conn.commit.assert_called_once()
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_raises_document_not_found_when_no_rows_updated(
+        self, mock_get_conn: MagicMock
+    ) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 0
+
+        repo = UploadedDocumentsRepository()
+
+        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
+            repo.update_anonymised_result(999, "text", [])

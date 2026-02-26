@@ -20,7 +20,35 @@ class Settings(BaseSettings):
 
     pdf_engine: str = "pdfplumber"
 
-    openai_api_key: str = ""
-    openai_model_name: str = ""
-    openai_timeout_seconds: int = 30
-    openai_rate_limit_per_minute: int = 60
+    normalization_provider: str = "openai"
+
+    normalization_openai_api_key: str = ""
+    normalization_openai_model_name: str = "gpt-4.1-mini"
+    normalization_openai_timeout_seconds: int = 30
+    normalization_openai_rate_limit_per_minute: int = 60
+    normalization_openai_temperature: float = 0.0
+
+    normalization_openai_compatible_api_key: str = ""
+    normalization_openai_compatible_model_name: str = ""
+    normalization_openai_compatible_timeout_seconds: int = 30
+    normalization_openai_compatible_base_url: str = ""
+
+    normalization_openrouter_api_key: str = ""
+    normalization_openrouter_model_name: str = ""
+    normalization_openrouter_timeout_seconds: int = 30
+
+    normalization_groq_api_key: str = ""
+    normalization_groq_model_name: str = ""
+    normalization_groq_timeout_seconds: int = 30
+
+    normalization_together_api_key: str = ""
+    normalization_together_model_name: str = ""
+    normalization_together_timeout_seconds: int = 30
+
+    normalization_deepseek_api_key: str = ""
+    normalization_deepseek_model_name: str = ""
+    normalization_deepseek_timeout_seconds: int = 30
+
+    normalization_ollama_api_key: str = ""
+    normalization_ollama_model_name: str = ""
+    normalization_ollama_timeout_seconds: int = 30

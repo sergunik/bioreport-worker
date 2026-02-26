@@ -5,6 +5,8 @@ from app.anonymization.factory import AnonymizerFactory
 from app.config.settings import Settings
 from app.database.repositories.uploaded_documents_repository import UploadedDocumentsRepository
 from app.logging.logger import Log
+from app.normalization.base import BaseNormalizer
+from app.normalization.factory import NormalizerFactory
 from app.pdf.base import BasePdfExtractor
 from app.pdf.factory import PdfExtractorFactory
 from app.processor.file_loader import FileLoader
@@ -14,7 +16,7 @@ class Processor:
     """Orchestrates the full document processing pipeline.
 
     Pipeline: load -> extract -> anonymize -> normalize -> persist.
-    Steps 4-7 are added in subsequent tasks.
+    Steps 6-7 are added in subsequent tasks.
     """
 
     def __init__(
@@ -23,11 +25,13 @@ class Processor:
         doc_repo: UploadedDocumentsRepository,
         pdf_extractor: BasePdfExtractor,
         anonymizer: BaseAnonymizer,
+        normalizer: BaseNormalizer,
     ) -> None:
         self._file_loader = file_loader
         self._doc_repo = doc_repo
         self._pdf_extractor = pdf_extractor
         self._anonymizer = anonymizer
+        self._normalizer = normalizer
 
     def process(self, uploaded_document_id: int, job_id: int) -> None:
         """Run the full processing pipeline for a document."""
@@ -66,8 +70,17 @@ class Processor:
             f"{len(anonymization_result.artifacts)} artifacts found"
         )
 
-        # Steps 5-7: implemented in subsequent tasks
-        raise NotImplementedError("Steps 5-7 not yet implemented")
+        # Step 5: Normalize
+        normalization_result = self._normalizer.normalize(
+            anonymization_result.anonymized_text
+        )
+        Log.info(
+            f"Normalized document {uploaded_document_id}: "
+            f"{len(normalization_result.markers)} markers"
+        )
+
+        # Steps 6-7: implemented in subsequent tasks
+        raise NotImplementedError("Steps 6-7 not yet implemented")
 
 
 def build_processor(settings: Settings) -> Processor:
@@ -76,9 +89,11 @@ def build_processor(settings: Settings) -> Processor:
     doc_repo = UploadedDocumentsRepository()
     pdf_extractor = PdfExtractorFactory.create(settings)
     anonymizer = AnonymizerFactory.create(settings)
+    normalizer = NormalizerFactory.create(settings)
     return Processor(
         file_loader=file_loader,
         doc_repo=doc_repo,
         pdf_extractor=pdf_extractor,
         anonymizer=anonymizer,
+        normalizer=normalizer,
     )

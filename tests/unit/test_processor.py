@@ -164,9 +164,11 @@ class TestProcessStep4Anonymization:
         mock_repo.update_anonymised_result.assert_called_once_with(
             5,
             anonymised_result="Patient PERSON_1",
-            anonymised_artifacts=[
-                {"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"},
-            ],
+            artifacts_payload={
+                "artifacts": [
+                    {"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"},
+                ]
+            },
             transliteration_mapping=[0, 1, 2],
         )
 

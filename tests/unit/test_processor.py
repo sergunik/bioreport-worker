@@ -8,6 +8,7 @@ from app.normalization.exceptions import NormalizationError, NormalizationNetwor
 from app.normalization.models import NormalizationResult as NormResult
 from app.normalization.models import Person
 from app.pdf.exceptions import PdfExtractionError
+from app.processor.artifacts_extractor import ArtifactsExtractor
 from app.processor.exceptions import DocumentNotFoundError
 from app.processor.models import UploadedDocument
 from app.processor.processor import Processor
@@ -43,6 +44,7 @@ def _make_processor() -> (
         doc_repo=mock_doc_repo,
         pdf_extractor=mock_pdf_extractor,
         anonymizer=mock_anonymizer,
+        artifacts_extractor=ArtifactsExtractor(),
         normalizer=mock_normalizer,
     )
     return (
@@ -182,7 +184,7 @@ class TestProcessStep4Anonymization:
         mock_repo.update_anonymised_result.assert_called_once_with(
             1,
             anonymised_result="no pii here",
-            anonymised_artifacts=[],
+            artifacts_payload={"artifacts": []},
             transliteration_mapping=[],
         )
 

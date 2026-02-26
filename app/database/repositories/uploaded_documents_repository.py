@@ -66,14 +66,24 @@ class UploadedDocumentsRepository:
         self,
         document_id: int,
         anonymised_result: str,
-        anonymised_artifacts: list[dict[str, Any]],
+        artifacts_payload: dict[str, Any],
         transliteration_mapping: list[int] | None = None,
     ) -> None:
         """Persist anonymized text, artifact mappings, and transliteration mapping.
 
+        Args:
+            document_id: Target document ID.
+            anonymised_result: Anonymized full text.
+            artifacts_payload: JSONB-ready dict with 'artifacts' key (list of artifact dicts).
+            transliteration_mapping: Optional list of code point mappings.
+
         Raises:
             DocumentNotFoundError: if no document with this ID exists.
         """
+        artifacts = artifacts_payload.get("artifacts")
+        if not isinstance(artifacts, list):
+            raise ValueError("artifacts_payload must contain an 'artifacts' list")
+
         transliteration_value = (
             Jsonb(transliteration_mapping)
             if transliteration_mapping is not None
@@ -91,7 +101,7 @@ class UploadedDocumentsRepository:
                     """,
                     (
                         anonymised_result,
-                        Jsonb(anonymised_artifacts),
+                        Jsonb(artifacts_payload),
                         transliteration_value,
                         document_id,
                     ),

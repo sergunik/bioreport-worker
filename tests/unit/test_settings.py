@@ -29,9 +29,13 @@ class TestSettingsDefaults:
         s = Settings()
         assert s.pdf_engine == "pdfplumber"
 
-    def test_default_openai_timeout(self) -> None:
+    def test_default_normalization_provider(self) -> None:
         s = Settings()
-        assert s.openai_timeout_seconds == 30
+        assert s.normalization_provider == "openai"
+
+    def test_default_normalization_openai_timeout(self) -> None:
+        s = Settings()
+        assert s.normalization_openai_timeout_seconds == 30
 
 
 class TestSettingsFromEnv:

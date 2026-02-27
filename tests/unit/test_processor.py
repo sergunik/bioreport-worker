@@ -4,6 +4,9 @@ import pytest
 
 from app.anonymization.exceptions import AnonymizationError
 from app.anonymization.models import AnonymizationResult, Artifact
+from app.normalization.exceptions import NormalizationError, NormalizationNetworkError
+from app.normalization.models import NormalizationResult as NormResult
+from app.normalization.models import Person
 from app.pdf.exceptions import PdfExtractionError
 from app.processor.artifacts_extractor import ArtifactsExtractor
 from app.processor.exceptions import DocumentNotFoundError
@@ -23,7 +26,9 @@ def _make_document() -> UploadedDocument:
     )
 
 
-def _make_processor() -> tuple[Processor, MagicMock, MagicMock, MagicMock, MagicMock]:
+def _make_processor() -> (
+    tuple[Processor, MagicMock, MagicMock, MagicMock, MagicMock, MagicMock]
+):
     mock_file_loader = MagicMock()
     mock_doc_repo = MagicMock()
     mock_doc_repo.get_sensitive_words.return_value = []
@@ -32,19 +37,29 @@ def _make_processor() -> tuple[Processor, MagicMock, MagicMock, MagicMock, Magic
     mock_anonymizer.anonymize.return_value = AnonymizationResult(
         anonymized_text="", artifacts=[], transliteration_mapping=[]
     )
+    mock_normalizer = MagicMock()
+    mock_normalizer.normalize.return_value = NormResult(person=Person(name="PERSON_1"))
     processor = Processor(
         file_loader=mock_file_loader,
         doc_repo=mock_doc_repo,
         pdf_extractor=mock_pdf_extractor,
         anonymizer=mock_anonymizer,
         artifacts_extractor=ArtifactsExtractor(),
+        normalizer=mock_normalizer,
     )
-    return processor, mock_file_loader, mock_doc_repo, mock_pdf_extractor, mock_anonymizer
+    return (
+        processor,
+        mock_file_loader,
+        mock_doc_repo,
+        mock_pdf_extractor,
+        mock_anonymizer,
+        mock_normalizer,
+    )
 
 
 class TestProcessStep1:
     def test_calls_find_by_id_with_document_id(self) -> None:
-        processor, _loader, mock_repo, _extractor, _anonymizer = _make_processor()
+        processor, _loader, mock_repo, _ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
 
         with pytest.raises(NotImplementedError):
@@ -53,7 +68,7 @@ class TestProcessStep1:
         mock_repo.find_by_id.assert_called_once_with(42)
 
     def test_calls_file_loader_with_document(self) -> None:
-        processor, mock_loader, mock_repo, _extractor, _anonymizer = _make_processor()
+        processor, mock_loader, mock_repo, _ext, _anon, _norm = _make_processor()
         document = _make_document()
         mock_repo.find_by_id.return_value = document
 
@@ -65,21 +80,21 @@ class TestProcessStep1:
 
 class TestProcessStep2:
     def test_calls_pdf_extractor_with_raw_bytes(self) -> None:
-        processor, mock_loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
+        processor, mock_loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
         mock_loader.load.return_value = b"%PDF-fake"
-        mock_extractor.extract.return_value = "extracted text"
+        mock_ext.extract.return_value = "extracted text"
 
         with pytest.raises(NotImplementedError):
             processor.process(uploaded_document_id=1, job_id=1)
 
-        mock_extractor.extract.assert_called_once_with(b"%PDF-fake")
+        mock_ext.extract.assert_called_once_with(b"%PDF-fake")
 
     def test_persists_extracted_text(self) -> None:
-        processor, mock_loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
+        processor, mock_loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
         mock_loader.load.return_value = b"%PDF-fake"
-        mock_extractor.extract.return_value = "extracted text"
+        mock_ext.extract.return_value = "extracted text"
 
         with pytest.raises(NotImplementedError):
             processor.process(uploaded_document_id=7, job_id=1)
@@ -87,17 +102,17 @@ class TestProcessStep2:
         mock_repo.update_parsed_result.assert_called_once_with(7, "extracted text")
 
     def test_propagates_pdf_extraction_error(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.side_effect = PdfExtractionError("bad pdf")
+        mock_ext.extract.side_effect = PdfExtractionError("bad pdf")
 
         with pytest.raises(PdfExtractionError, match="bad pdf"):
             processor.process(uploaded_document_id=1, job_id=1)
 
     def test_does_not_persist_when_extraction_fails(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.side_effect = PdfExtractionError("bad pdf")
+        mock_ext.extract.side_effect = PdfExtractionError("bad pdf")
 
         with pytest.raises(PdfExtractionError):
             processor.process(uploaded_document_id=1, job_id=1)
@@ -107,9 +122,9 @@ class TestProcessStep2:
 
 class TestProcessStep3SensitiveWords:
     def test_fetches_sensitive_words_for_user(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "text"
+        mock_ext.extract.return_value = "text"
 
         with pytest.raises(NotImplementedError):
             processor.process(uploaded_document_id=1, job_id=1)
@@ -119,23 +134,23 @@ class TestProcessStep3SensitiveWords:
 
 class TestProcessStep4Anonymization:
     def test_calls_anonymizer_with_extracted_text_and_dictionary(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "Patient John Doe"
+        mock_ext.extract.return_value = "Patient John Doe"
         mock_repo.get_sensitive_words.return_value = ["john", "doe"]
 
         with pytest.raises(NotImplementedError):
             processor.process(uploaded_document_id=1, job_id=1)
 
-        mock_anonymizer.anonymize.assert_called_once_with(
+        mock_anon.anonymize.assert_called_once_with(
             "Patient John Doe", sensitive_words=["john", "doe"]
         )
 
     def test_persists_anonymised_result_and_artifacts(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "Patient John Doe"
-        mock_anonymizer.anonymize.return_value = AnonymizationResult(
+        mock_ext.extract.return_value = "Patient John Doe"
+        mock_anon.anonymize.return_value = AnonymizationResult(
             anonymized_text="Patient PERSON_1",
             artifacts=[
                 Artifact(type="PERSON", original="John Doe", replacement="PERSON_1"),
@@ -151,21 +166,17 @@ class TestProcessStep4Anonymization:
             anonymised_result="Patient PERSON_1",
             artifacts_payload={
                 "artifacts": [
-                    {
-                        "type": "PERSON",
-                        "original": "John Doe",
-                        "replacement": "PERSON_1",
-                    },
+                    {"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"},
                 ]
             },
             transliteration_mapping=[0, 1, 2],
         )
 
     def test_persists_empty_artifacts_when_no_pii(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
         mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "no pii here"
-        mock_anonymizer.anonymize.return_value = AnonymizationResult(
+        mock_ext.extract.return_value = "no pii here"
+        mock_anon.anonymize.return_value = AnonymizationResult(
             anonymized_text="no pii here", artifacts=[], transliteration_mapping=[]
         )
 
@@ -179,9 +190,108 @@ class TestProcessStep4Anonymization:
             transliteration_mapping=[],
         )
 
+    def test_propagates_anonymization_error(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_anon.anonymize.side_effect = AnonymizationError("anon failed")
+
+        with pytest.raises(AnonymizationError, match="anon failed"):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+    def test_does_not_anonymize_when_extraction_fails(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.side_effect = PdfExtractionError("bad pdf")
+
+        with pytest.raises(PdfExtractionError):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+        mock_anon.anonymize.assert_not_called()
+
+    def test_does_not_persist_anonymised_when_anonymization_fails(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, _norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_anon.anonymize.side_effect = AnonymizationError("boom")
+
+        with pytest.raises(AnonymizationError):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+        mock_repo.update_anonymised_result.assert_not_called()
+
+
+class TestProcessStep5Normalization:
+    def test_calls_normalizer_with_anonymized_text(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, mock_norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_anon.anonymize.return_value = AnonymizationResult(
+            anonymized_text="Patient PERSON_1",
+            artifacts=[
+                Artifact(type="PERSON", original="John", replacement="PERSON_1"),
+            ],
+            transliteration_mapping=[],
+        )
+
+        with pytest.raises(NotImplementedError):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+        mock_norm.normalize.assert_called_once_with("Patient PERSON_1")
+
+    def test_calls_normalizer_without_person_context(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, mock_norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_anon.anonymize.return_value = AnonymizationResult(
+            anonymized_text="no pii", artifacts=[], transliteration_mapping=[]
+        )
+
+        with pytest.raises(NotImplementedError):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+        mock_norm.normalize.assert_called_once_with("no pii")
+
+    def test_propagates_normalization_error(self) -> None:
+        processor, _loader, mock_repo, mock_ext, _anon, mock_norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_norm.normalize.side_effect = NormalizationError("norm failed")
+
+        with pytest.raises(NormalizationError, match="norm failed"):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+    def test_propagates_normalization_network_error(self) -> None:
+        processor, _loader, mock_repo, mock_ext, _anon, mock_norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_norm.normalize.side_effect = NormalizationNetworkError("timeout")
+
+        with pytest.raises(NormalizationNetworkError, match="timeout"):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+    def test_does_not_normalize_when_anonymization_fails(self) -> None:
+        processor, _loader, mock_repo, mock_ext, mock_anon, mock_norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+        mock_anon.anonymize.side_effect = AnonymizationError("boom")
+
+        with pytest.raises(AnonymizationError):
+            processor.process(uploaded_document_id=1, job_id=1)
+
+        mock_norm.normalize.assert_not_called()
+
+    def test_raises_not_implemented_after_normalization(self) -> None:
+        processor, _loader, mock_repo, mock_ext, _anon, _norm = _make_processor()
+        mock_repo.find_by_id.return_value = _make_document()
+        mock_ext.extract.return_value = "text"
+
+        with pytest.raises(NotImplementedError, match="Steps 6"):
+            processor.process(uploaded_document_id=1, job_id=1)
+
     def test_calls_steps_in_order(self) -> None:
-        """Verify full pipeline call order."""
-        processor, mock_loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
+        """Verify full pipeline call order including normalization."""
+        processor, mock_loader, mock_repo, mock_ext, mock_anon, mock_norm = _make_processor()
         call_order: list[str] = []
         mock_repo.find_by_id.side_effect = lambda *a: (
             call_order.append("find_by_id"),
@@ -191,7 +301,7 @@ class TestProcessStep4Anonymization:
             call_order.append("load"),
             b"%PDF",
         )[1]
-        mock_extractor.extract.side_effect = lambda *a: (
+        mock_ext.extract.side_effect = lambda *_: (
             call_order.append("extract"),
             "text",
         )[1]
@@ -203,7 +313,7 @@ class TestProcessStep4Anonymization:
             call_order.append("get_sensitive_words"),
             [],
         )[1]
-        mock_anonymizer.anonymize.side_effect = lambda *_, **__: (
+        mock_anon.anonymize.side_effect = lambda *_, **__: (
             call_order.append("anonymize"),
             AnonymizationResult(
                 anonymized_text="anon", artifacts=[], transliteration_mapping=[]
@@ -212,6 +322,10 @@ class TestProcessStep4Anonymization:
         mock_repo.update_anonymised_result.side_effect = lambda *_, **__: (
             call_order.append("update_anonymised_result"),
             None,
+        )[1]
+        mock_norm.normalize.side_effect = lambda *_, **__: (
+            call_order.append("normalize"),
+            NormResult(person=Person(name="PERSON_1")),
         )[1]
 
         with pytest.raises(NotImplementedError):
@@ -225,57 +339,20 @@ class TestProcessStep4Anonymization:
             "get_sensitive_words",
             "anonymize",
             "update_anonymised_result",
+            "normalize",
         ]
-
-    def test_raises_not_implemented_after_anonymization(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, _anonymizer = _make_processor()
-        mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "text"
-
-        with pytest.raises(NotImplementedError, match="Steps 5"):
-            processor.process(uploaded_document_id=1, job_id=1)
-
-    def test_propagates_anonymization_error(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
-        mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "text"
-        mock_anonymizer.anonymize.side_effect = AnonymizationError("anon failed")
-
-        with pytest.raises(AnonymizationError, match="anon failed"):
-            processor.process(uploaded_document_id=1, job_id=1)
-
-    def test_does_not_anonymize_when_extraction_fails(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
-        mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.side_effect = PdfExtractionError("bad pdf")
-
-        with pytest.raises(PdfExtractionError):
-            processor.process(uploaded_document_id=1, job_id=1)
-
-        mock_anonymizer.anonymize.assert_not_called()
-
-    def test_does_not_persist_anonymised_when_anonymization_fails(self) -> None:
-        processor, _loader, mock_repo, mock_extractor, mock_anonymizer = _make_processor()
-        mock_repo.find_by_id.return_value = _make_document()
-        mock_extractor.extract.return_value = "text"
-        mock_anonymizer.anonymize.side_effect = AnonymizationError("boom")
-
-        with pytest.raises(AnonymizationError):
-            processor.process(uploaded_document_id=1, job_id=1)
-
-        mock_repo.update_anonymised_result.assert_not_called()
 
 
 class TestProcessPropagatesErrors:
     def test_propagates_document_not_found(self) -> None:
-        processor, _loader, mock_repo, _extractor, _anonymizer = _make_processor()
+        processor, _loader, mock_repo, _ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.side_effect = DocumentNotFoundError("Document 99 not found")
 
         with pytest.raises(DocumentNotFoundError, match="99"):
             processor.process(uploaded_document_id=99, job_id=1)
 
     def test_does_not_call_loader_when_document_missing(self) -> None:
-        processor, mock_loader, mock_repo, _extractor, _anonymizer = _make_processor()
+        processor, mock_loader, mock_repo, _ext, _anon, _norm = _make_processor()
         mock_repo.find_by_id.side_effect = DocumentNotFoundError("not found")
 
         with pytest.raises(DocumentNotFoundError):

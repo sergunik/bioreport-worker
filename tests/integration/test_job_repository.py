@@ -30,7 +30,7 @@ class TestJobRepositoryClaimNextJob:
         assert job is None
 
     def test_claim_next_job_skips_job_with_attempts_at_max(
-        self, seed_document: tuple[int, str], db_conn, integration_cleanup
+        self, seed_document: tuple[int, str, int], db_conn, integration_cleanup
     ) -> None:
         with db_conn.cursor() as cur:
             cur.execute(

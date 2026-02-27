@@ -4,6 +4,11 @@ from app.processor.exceptions import UnsupportedStorageDiskError
 from app.processor.models import UploadedDocument
 
 
+def document_file_path(files_root: Path, user_id: int, uuid: str) -> Path:
+    """Build path to document file: {files_root}/{user_id}/{uuid}.pdf"""
+    return files_root / str(user_id) / f"{uuid}.pdf"
+
+
 class FileLoader:
     """Resolves filesystem path for a document and reads its bytes."""
 
@@ -29,5 +34,4 @@ class FileLoader:
         return path.read_bytes()
 
     def _resolve_path(self, document: UploadedDocument) -> Path:
-        """Build path: {files_root}/{uuid}.pdf"""
-        return self._files_root / f"{document.uuid}.pdf"
+        return document_file_path(self._files_root, document.user_id, document.uuid)

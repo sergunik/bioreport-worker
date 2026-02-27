@@ -6,13 +6,13 @@ from app.processor.exceptions import DocumentNotFoundError
 
 @pytest.mark.integration
 class TestUploadedDocumentsRepositoryFindById:
-    def test_find_by_id_returns_document(self, seed_document: tuple[int, str]) -> None:
-        document_id, doc_uuid = seed_document
+    def test_find_by_id_returns_document(self, seed_document: tuple[int, str, int]) -> None:
+        document_id, doc_uuid, user_id = seed_document
         repo = UploadedDocumentsRepository()
         doc = repo.find_by_id(document_id)
         assert doc.id == document_id
         assert doc.uuid == doc_uuid
-        assert doc.user_id == 1
+        assert doc.user_id == user_id
         assert doc.storage_disk == "local"
         assert doc.file_hash_sha256 == "a" * 64
         assert doc.mime_type == "application/pdf"
@@ -38,8 +38,10 @@ class TestUploadedDocumentsRepositoryGetSensitiveWords:
 
 @pytest.mark.integration
 class TestUploadedDocumentsRepositoryUpdateParsedResult:
-    def test_update_parsed_result_persists(self, seed_document: tuple[int, str], db_conn) -> None:
-        document_id, _ = seed_document
+    def test_update_parsed_result_persists(
+        self, seed_document: tuple[int, str, int], db_conn
+    ) -> None:
+        document_id, *_ = seed_document
         repo = UploadedDocumentsRepository()
         repo.update_parsed_result(document_id, "extracted text")
         with db_conn.cursor() as cur:
@@ -60,9 +62,9 @@ class TestUploadedDocumentsRepositoryUpdateParsedResult:
 @pytest.mark.integration
 class TestUploadedDocumentsRepositoryUpdateAnonymisedResult:
     def test_update_anonymised_result_persists_all_fields(
-        self, seed_document: tuple[int, str], db_conn
+        self, seed_document: tuple[int, str, int], db_conn
     ) -> None:
-        document_id, _ = seed_document
+        document_id, *_ = seed_document
         repo = UploadedDocumentsRepository()
         repo.update_anonymised_result(
             document_id,

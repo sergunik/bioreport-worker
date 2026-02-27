@@ -6,7 +6,7 @@ Processing flow:
 3. Build character-level position mapping (transliterated → original).
 4. Detect PII on transliterated text:
    a. Exact user-dictionary matching (token-level).
-   b. Regex patterns (emails, dates, phones, numeric IDs).
+   b. Regex patterns (emails, phones, numeric IDs).
 5. Map detected spans back to original text.
 6. Replace PII in original text with deterministic placeholders.
 7. Return anonymized text + structured artifacts.
@@ -50,9 +50,6 @@ class Anonymizer(BaseAnonymizer):
     _EMAIL_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"[\w.\-+]+@[\w.\-]+\.\w{2,}",
     )
-    _DATE_RE: ClassVar[re.Pattern[str]] = re.compile(
-        r"(?<!\d)\d{1,2}\.\d{1,2}\.\d{4}(?:\s+\d{1,2}(?::\d{2})?)?(?!\d)",
-    )
     _PHONE_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"(?<!\w)"
         r"\+?\d[\d\s\-()]{5,18}\d"
@@ -61,10 +58,12 @@ class Anonymizer(BaseAnonymizer):
     _ID_RE: ClassVar[re.Pattern[str]] = re.compile(
         r"\b\d{6,20}\b",
     )
+    _DICT_STRIP_PUNCT_RE: ClassVar[re.Pattern[str]] = re.compile(
+        r"^[^a-z0-9']+|[^a-z0-9']+$"
+    )
 
     _REGEX_RULES: ClassVar[list[tuple[str, re.Pattern[str]]]] = [
         ("EMAIL", _EMAIL_RE),
-        ("DATE", _DATE_RE),
         ("PHONE", _PHONE_RE),
         ("ID", _ID_RE),
     ]
@@ -123,7 +122,8 @@ class Anonymizer(BaseAnonymizer):
 
         # Step 3 — Detect PII in transliterated text
         detections: list[_Detection] = []
-        detections.extend(self._detect_dictionary(transliterated, set(dictionary)))
+        normalized_dictionary = self._normalize_dictionary(dictionary)
+        detections.extend(self._detect_dictionary(transliterated, normalized_dictionary))
         detections.extend(self._detect_regex(transliterated))
 
         if not detections:
@@ -142,6 +142,20 @@ class Anonymizer(BaseAnonymizer):
 
         Log.info(f"Anonymized: {len(result.artifacts)} PII entities replaced")
         return result
+
+    def _normalize_dictionary(self, dictionary: list[str]) -> set[str]:
+        normalized_words: set[str] = set()
+        for item in dictionary:
+            if not item:
+                continue
+            normalized_item = unicodedata.normalize("NFC", item)
+            transliterated_item = self._transliterator.transliterate(normalized_item)
+            lowered_item = transliterated_item.lower()
+            for token in lowered_item.split():
+                cleaned = self._DICT_STRIP_PUNCT_RE.sub("", token)
+                if cleaned:
+                    normalized_words.add(cleaned)
+        return normalized_words
 
     # ------------------------------------------------------------------
     # Step 2 — Transliteration with char mapping
@@ -285,7 +299,7 @@ class Anonymizer(BaseAnonymizer):
     # ------------------------------------------------------------------
 
     def _detect_regex(self, transliterated: str) -> list[_Detection]:
-        """Find emails, dates, phones, and numeric IDs via regex."""
+        """Find emails, phones, and numeric IDs via regex."""
         detections: list[_Detection] = []
         for entity_type, pattern in self._REGEX_RULES:
             for m in pattern.finditer(transliterated):

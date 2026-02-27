@@ -14,7 +14,15 @@ from app.database.models import JobRecord
 
 def _test_settings() -> Settings:
     os.environ.setdefault("DB_DATABASE", "bioreport_test")
-    return Settings()
+    prev = os.environ.get("NORMALIZATION_PROVIDER")
+    os.environ["NORMALIZATION_PROVIDER"] = "example"
+    try:
+        return Settings()
+    finally:
+        if prev is None:
+            os.environ.pop("NORMALIZATION_PROVIDER", None)
+        else:
+            os.environ["NORMALIZATION_PROVIDER"] = prev
 
 
 def _choose_existing_account_id(db_conn: psycopg.Connection[Any]) -> tuple[int, str | None]:

@@ -51,6 +51,10 @@ class OpenAIClientAdapter(BaseNormalizationClient):
             raise NormalizationNetworkError(
                 f"AI provider network error: {exc}"
             ) from exc
+        except openai.APIStatusError as exc:
+            raise NormalizationError(
+                f"AI provider HTTP error {exc.status_code}: {exc}"
+            ) from exc
         except openai.APIError as exc:
             raise NormalizationNetworkError(
                 f"AI provider API error: {exc}"

@@ -21,7 +21,7 @@ class NormalizerFactory:
     @classmethod
     def create(cls, settings: Settings) -> BaseNormalizer:
         """Create a configured normalizer from application settings."""
-        provider = settings.normalization_provider.lower()
+        provider = settings.normalization_provider.strip().lower()
         if provider == "example":
             return Normalizer(
                 client=ExampleClientAdapter(),
@@ -75,8 +75,10 @@ class NormalizerFactory:
             "deepseek": settings.normalization_deepseek_api_key,
             "ollama": settings.normalization_ollama_api_key,
         }
-        # Some providers (e.g., ollama) may not require an API key
-        return key_map.get(provider, "")
+        key = (key_map.get(provider, "") or "").strip()
+        if provider in {"openai", "openrouter", "groq", "together", "deepseek"} and not key:
+            raise ValueError(f"Missing API key for normalization_provider={provider}")
+        return key
 
     @classmethod
     def _resolve_model_name(cls, provider: str, settings: Settings) -> str:
@@ -89,7 +91,10 @@ class NormalizerFactory:
             "deepseek": settings.normalization_deepseek_model_name,
             "ollama": settings.normalization_ollama_model_name,
         }
-        return key_map.get(provider, "") or ""
+        model = (key_map.get(provider, "") or "").strip()
+        if not model:
+            raise ValueError(f"Missing model name for normalization_provider={provider}")
+        return model
 
     @classmethod
     def _resolve_timeout_seconds(cls, provider: str, settings: Settings) -> int:

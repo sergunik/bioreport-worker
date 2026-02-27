@@ -3,6 +3,7 @@
   "required": [
     "person",
     "diagnostic_date",
+    "language",
     "markers"
   ],
   "properties": {
@@ -32,6 +33,12 @@
         "null"
       ],
       "format": "date"
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "markers": {
       "type": "array",

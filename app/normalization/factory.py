@@ -75,10 +75,8 @@ class NormalizerFactory:
             "deepseek": settings.normalization_deepseek_api_key,
             "ollama": settings.normalization_ollama_api_key,
         }
-        key = key_map.get(provider, "")
-        if not key and provider in cls.OPENAI_COMPATIBLE_BASE_URLS:
-            return key
-        return key or ""
+        # Some providers (e.g., ollama) may not require an API key
+        return key_map.get(provider, "")
 
     @classmethod
     def _resolve_model_name(cls, provider: str, settings: Settings) -> str:

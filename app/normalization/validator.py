@@ -116,7 +116,7 @@ def _build_value(raw: Any, marker_index: int) -> MarkerValue:
 
 def _build_numeric_value(raw: dict[str, Any], marker_index: int) -> NumericValue:
     number = raw.get("number")
-    if not isinstance(number, (int, float)):
+    if isinstance(number, bool) or not isinstance(number, (int, float)):
         raise NormalizationValidationError(
             f"Marker at index {marker_index}: 'value.number' must be a number"
         )

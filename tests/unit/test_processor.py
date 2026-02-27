@@ -301,7 +301,7 @@ class TestProcessStep5Normalization:
             call_order.append("load"),
             b"%PDF",
         )[1]
-        mock_ext.extract.side_effect = lambda *a: (
+        mock_ext.extract.side_effect = lambda *_: (
             call_order.append("extract"),
             "text",
         )[1]

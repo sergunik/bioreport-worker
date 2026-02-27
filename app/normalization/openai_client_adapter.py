@@ -56,6 +56,8 @@ class OpenAIClientAdapter(BaseNormalizationClient):
                 f"AI provider API error: {exc}"
             ) from exc
 
+        if not response.choices:
+            raise NormalizationError("AI returned no choices")
         content = response.choices[0].message.content
         if content is None:
             raise NormalizationError("AI returned empty response")

@@ -19,6 +19,7 @@ class TestNormalizerFactory:
         result = normalizer.normalize("any text")
         assert result.person.name == "PERSON_1"
         assert result.markers == []
+
     def test_creates_normalizer(self) -> None:
         settings = Settings(
             normalization_provider="openai",

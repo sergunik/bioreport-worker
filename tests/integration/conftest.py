@@ -10,6 +10,7 @@ from psycopg.rows import dict_row
 from app.config.settings import Settings
 from app.database.connection import close_pool, get_connection, init_pool
 from app.database.models import JobRecord
+from app.processor.file_loader import document_file_path
 
 
 def _test_settings() -> Settings:
@@ -84,7 +85,7 @@ def integration_cleanup() -> Generator[list[tuple[str, int]], None, None]:
 def seed_document(
     db_conn: psycopg.Connection[Any],
     integration_cleanup: list[tuple[str, int]],
-) -> tuple[int, str]:
+) -> tuple[int, str, int]:
     doc_uuid = str(uuid.uuid4())
     account_id, _ = _choose_existing_account_id(db_conn)
     with db_conn.cursor() as cur:
@@ -102,14 +103,14 @@ def seed_document(
         document_id = row[0]
     db_conn.commit()
     integration_cleanup.append(("uploaded_documents", document_id))
-    return (document_id, doc_uuid)
+    return (document_id, doc_uuid, account_id)
 
 
 @pytest.fixture
 def seed_job(
     db_conn: psycopg.Connection[Any],
     integration_cleanup: list[tuple[str, int]],
-    seed_document: tuple[int, str],
+    seed_document: tuple[int, str, int],
 ) -> JobRecord:
     document_id = seed_document[0]
     with db_conn.cursor(row_factory=dict_row) as cur:
@@ -185,11 +186,12 @@ def files_root(tmp_path: Any) -> Any:
 
 @pytest.fixture
 def sample_pdf_on_disk(
-    seed_document: tuple[int, str],
+    seed_document: tuple[int, str, int],
     files_root: Any,
     sample_pdf_bytes: bytes,
 ) -> tuple[int, str, Any]:
-    document_id, doc_uuid = seed_document
-    path = files_root / f"{doc_uuid}.pdf"
+    document_id, doc_uuid, user_id = seed_document
+    path = document_file_path(files_root, user_id, doc_uuid)
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(sample_pdf_bytes)
     return (document_id, doc_uuid, files_root)

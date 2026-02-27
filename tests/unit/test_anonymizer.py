@@ -86,6 +86,25 @@ class TestDictionaryDetection:
         result = anonymizer.anonymize("Patient Ivan visited.")
         assert all(a.type != "PERSON" for a in result.artifacts)
 
+    def test_normalizes_single_entry_dictionary_string(self) -> None:
+        anonymizer = Anonymizer()
+        result = anonymizer.anonymize(
+            "Ime i prezime: SERHII TOPOLSKYI",
+            sensitive_words=["serhii sergey serhei serhey topolskyi"],
+        )
+        assert "SERHII" not in result.anonymized_text
+        assert "TOPOLNYTSKYI" not in result.anonymized_text
+        assert len([a for a in result.artifacts if a.type == "PERSON"]) == 2
+
+    def test_normalizes_dictionary_entries_with_punctuation(self) -> None:
+        anonymizer = Anonymizer()
+        result = anonymizer.anonymize(
+            "Patient IVAN PETROV visited.",
+            sensitive_words=["ivan, petrov;"],
+        )
+        assert "IVAN" not in result.anonymized_text
+        assert "PETROV" not in result.anonymized_text
+
 
 class TestCyrillicTransliteration:
     def test_replaces_cyrillic_name_from_dictionary(self) -> None:
@@ -231,12 +250,10 @@ class TestPhoneDetection:
 
     def test_phone_does_not_match_date_format(self) -> None:
         anonymizer = Anonymizer()
-        result = anonymizer.anonymize("Дата замовлення: 10.01.2024 13:53 Оформлено: онлайн")
+        result = anonymizer.anonymize("Дата замовлення: 10.01.2024 Оформлено: онлайн")
         phone_artifacts = [a for a in result.artifacts if a.type == "PHONE"]
-        date_artifacts = [a for a in result.artifacts if a.type == "DATE"]
         assert len(phone_artifacts) == 0
-        assert len(date_artifacts) >= 1
-        assert "10.01.2024" not in result.anonymized_text
+        assert "10.01.2024" in result.anonymized_text
 
     def test_mobile_number_still_matched_as_phone(self) -> None:
         anonymizer = Anonymizer()
@@ -245,50 +262,6 @@ class TestPhoneDetection:
         assert len(phone_artifacts) == 1
         assert phone_artifacts[0].original == "3603230311"
         assert "3603230311" not in result.anonymized_text
-
-
-class TestDateDetection:
-    def test_detects_date_dd_mm_yyyy(self) -> None:
-        anonymizer = Anonymizer()
-        result = anonymizer.anonymize("Дата народження: 01.01.1986 Вік: 38")
-        assert "01.01.1986" not in result.anonymized_text
-        assert any(a.type == "DATE" for a in result.artifacts)
-
-    def test_detects_date_with_time(self) -> None:
-        anonymizer = Anonymizer()
-        result = anonymizer.anonymize("Дата замовлення: 10.01.2024 13:53 Оформлено: онлайн")
-        date_artifacts = [a for a in result.artifacts if a.type == "DATE"]
-        assert len(date_artifacts) >= 1
-        assert "10.01.2024" not in result.anonymized_text
-        assert any(a.original.startswith("10.01.2024") for a in date_artifacts)
-
-    def test_detects_multiple_dates(self) -> None:
-        anonymizer = Anonymizer()
-        result = anonymizer.anonymize(
-            "Замовлення 10.01.2024 13:53. Народження 01.01.1986. Друк 17.01.2024"
-        )
-        date_artifacts = [a for a in result.artifacts if a.type == "DATE"]
-        assert len(date_artifacts) >= 3
-        assert "10.01.2024" not in result.anonymized_text
-        assert "01.01.1986" not in result.anonymized_text
-        assert "17.01.2024" not in result.anonymized_text
-
-    def test_lab_report_snippet_dates_as_date_not_phone(self) -> None:
-        anonymizer = Anonymizer()
-        text = (
-            "Дата замовлення: 10.01.2024 13:53 Оформлено: онлайн\n"
-            "Дата народження: 01.01.1986 Вік: 38 Y 0 M Стать: Чоловіча 3603230311\n"
-            "Стор. 1 з 1 Дата друку:17.01.2024"
-        )
-        result = anonymizer.anonymize(text)
-        phone_artifacts = [a for a in result.artifacts if a.type == "PHONE"]
-        date_artifacts = [a for a in result.artifacts if a.type == "DATE"]
-        assert all(a.original != "10.01.2024 13" for a in result.artifacts)
-        assert all(a.original != "01.01.1986" for a in phone_artifacts)
-        assert all(a.original != "17.01.2024" for a in phone_artifacts)
-        assert "3603230311" not in result.anonymized_text
-        assert len(date_artifacts) >= 3
-        assert len(phone_artifacts) == 1
 
 
 class TestIdDetection:

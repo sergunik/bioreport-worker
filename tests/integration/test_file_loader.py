@@ -23,9 +23,9 @@ class TestFileLoaderLoad:
         assert result == sample_pdf_bytes
 
     def test_load_raises_file_not_found(
-        self, seed_document: tuple[int, str], files_root: object
+        self, seed_document: tuple[int, str, int], files_root: object
     ) -> None:
-        document_id, _ = seed_document
+        document_id, *_ = seed_document
         repo = UploadedDocumentsRepository()
         document = repo.find_by_id(document_id)
         loader = FileLoader(files_root=files_root)

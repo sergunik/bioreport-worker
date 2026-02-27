@@ -26,7 +26,8 @@ class TestLoadReturnsBytes:
     def test_returns_bytes_for_local_disk(self, tmp_path: Path) -> None:
         loader = FileLoader(files_root=tmp_path)
         doc = _make_document(storage_disk="local", uuid="abc-123")
-        (tmp_path / "abc-123.pdf").write_bytes(b"%PDF test content")
+        (tmp_path / "10" / "abc-123.pdf").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "10" / "abc-123.pdf").write_bytes(b"%PDF test content")
 
         result = loader.load(doc)
 
@@ -35,7 +36,8 @@ class TestLoadReturnsBytes:
     def test_reads_correct_file_by_uuid(self, tmp_path: Path) -> None:
         loader = FileLoader(files_root=tmp_path)
         doc = _make_document(uuid="def-456")
-        (tmp_path / "def-456.pdf").write_bytes(b"%PDF other")
+        (tmp_path / "10" / "def-456.pdf").parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "10" / "def-456.pdf").write_bytes(b"%PDF other")
 
         result = loader.load(doc)
 

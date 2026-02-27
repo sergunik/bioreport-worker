@@ -51,7 +51,7 @@ class UploadedDocumentsRepository:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT sensitive_words FROM accounts WHERE id = %s",
+                    "SELECT sensitive_words FROM accounts WHERE user_id = %s",
                     (user_id,),
                 )
                 row = cur.fetchone()

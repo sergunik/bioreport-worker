@@ -45,7 +45,7 @@ class TestProcessorPipeline:
 
     def test_process_raises_file_not_found(
         self,
-        seed_document: tuple[int, str],
+        seed_document: tuple[int, str, int],
         seed_job,
         test_settings: Settings,
         files_root,

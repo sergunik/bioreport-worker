@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 
 pytest.importorskip("icu")
@@ -22,19 +20,10 @@ class TestWorkerIntegration:
     ) -> None:
         _document_id, _doc_uuid, files_root = sample_pdf_on_disk
         processor = build_processor(test_settings, files_root=files_root)
-        original_process = processor.process
-
-        def process_without_raise(uid: int, jid: int) -> None:
-            try:
-                original_process(uid, jid)
-            except NotImplementedError:
-                pass
-
-        with patch.object(processor, "process", process_without_raise):
-            job_repo = JobRepository(max_attempts=test_settings.max_job_attempts)
-            job_runner = JobRunner(processor, job_repo, test_settings)
-            worker = Worker(job_repo, job_runner, test_settings)
-            worker.run(max_jobs=1)
+        job_repo = JobRepository(max_attempts=test_settings.max_job_attempts)
+        job_runner = JobRunner(processor, job_repo, test_settings)
+        worker = Worker(job_repo, job_runner, test_settings)
+        worker.run(max_jobs=1)
 
         with get_connection() as conn:
             with conn.cursor() as cur:

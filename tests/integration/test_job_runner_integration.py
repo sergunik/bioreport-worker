@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -28,18 +28,9 @@ class TestJobRunnerSuccess:
             attempts=0,
         )
         processor = build_processor(test_settings, files_root=files_root)
-        original_process = processor.process
-
-        def process_without_raise(uid: int, jid: int) -> None:
-            try:
-                original_process(uid, jid)
-            except NotImplementedError:
-                pass
-
-        with patch.object(processor, "process", process_without_raise):
-            job_repo = JobRepository(max_attempts=test_settings.max_job_attempts)
-            runner = JobRunner(processor, job_repo, test_settings)
-            runner.run(job)
+        job_repo = JobRepository(max_attempts=test_settings.max_job_attempts)
+        runner = JobRunner(processor, job_repo, test_settings)
+        runner.run(job)
 
         with get_connection() as conn:
             with conn.cursor() as cur:

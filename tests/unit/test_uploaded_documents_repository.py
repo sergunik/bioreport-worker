@@ -152,31 +152,22 @@ class TestUpdateParsedResult:
             repo.update_parsed_result(999, "text")
 
 
-class TestUpdateAnonymisedResult:
+class TestUpdateAnonymizedText:
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
-        artifacts_payload = {
-            "artifacts": [
-                {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
-            ]
-        }
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(42, "anon text", artifacts_payload)
+        repo.update_anonymized_text(42, "anon text")
 
         mock_cursor.execute.assert_called_once()
         sql, params = mock_cursor.execute.call_args.args
         assert "UPDATE uploaded_documents" in sql
         assert "anonymised_result" in sql
-        assert "anonymised_artifacts" in sql
         assert "transliteration_mapping" in sql
         assert params[0] == "anon text"
-        assert params[1].obj["artifacts"] == [
-            {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
-        ]
-        assert params[3] == 42
+        assert params[2] == 42
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_passes_transliteration_mapping(self, mock_get_conn: MagicMock) -> None:
@@ -184,13 +175,11 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(
-            1, "text", {"artifacts": []}, transliteration_mapping=[0, 1, 2]
-        )
+        repo.update_anonymized_text(1, "text", transliteration_mapping=[0, 1, 2])
 
         sql, params = mock_cursor.execute.call_args.args
         assert "transliteration_mapping" in sql
-        assert params[2] is not None
+        assert params[1] is not None
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_stores_null_when_transliteration_mapping_is_none(
@@ -200,13 +189,11 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(
-            1, "text", {"artifacts": []}, transliteration_mapping=None
-        )
+        repo.update_anonymized_text(1, "text", transliteration_mapping=None)
 
         sql, params = mock_cursor.execute.call_args.args
         assert "transliteration_mapping" in sql
-        assert params[2] is None
+        assert params[1] is None
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
@@ -214,7 +201,7 @@ class TestUpdateAnonymisedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(1, "text", {"artifacts": []})
+        repo.update_anonymized_text(1, "text")
 
         mock_conn.commit.assert_called_once()
 
@@ -228,4 +215,61 @@ class TestUpdateAnonymisedResult:
         repo = UploadedDocumentsRepository()
 
         with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_anonymised_result(999, "text", {"artifacts": []})
+            repo.update_anonymized_text(999, "text")
+
+
+class TestUpdateArtifactsPayload:
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+        artifacts_payload = {
+            "artifacts": [
+                {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
+            ]
+        }
+
+        repo = UploadedDocumentsRepository()
+        repo.update_artifacts_payload(42, artifacts_payload)
+
+        mock_cursor.execute.assert_called_once()
+        sql, params = mock_cursor.execute.call_args.args
+        assert "UPDATE uploaded_documents" in sql
+        assert "anonymised_artifacts" in sql
+        assert params[0].obj["artifacts"] == [
+            {"type": "PERSON", "original": "John", "replacement": "PERSON_1"}
+        ]
+        assert params[1] == 42
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_raises_when_artifacts_not_list(self, mock_get_conn: MagicMock) -> None:
+        _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+
+        repo = UploadedDocumentsRepository()
+
+        with pytest.raises(ValueError, match="artifacts_payload must contain"):
+            repo.update_artifacts_payload(1, {"artifacts": "not a list"})
+
+        mock_cursor.execute.assert_not_called()
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
+        mock_conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 1
+
+        repo = UploadedDocumentsRepository()
+        repo.update_artifacts_payload(1, {"artifacts": []})
+
+        mock_conn.commit.assert_called_once()
+
+    @patch("app.database.repositories.uploaded_documents_repository.get_connection")
+    def test_raises_document_not_found_when_no_rows_updated(
+        self, mock_get_conn: MagicMock
+    ) -> None:
+        _conn, mock_cursor = _mock_connection(mock_get_conn)
+        mock_cursor.rowcount = 0
+
+        repo = UploadedDocumentsRepository()
+
+        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
+            repo.update_artifacts_payload(999, {"artifacts": []})

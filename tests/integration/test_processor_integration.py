@@ -17,16 +17,13 @@ class TestProcessorPipeline:
     ) -> None:
         document_id, _doc_uuid, files_root = sample_pdf_on_disk
         processor = build_processor(test_settings, files_root=files_root)
-        try:
-            processor.process(document_id, 1)
-        except NotImplementedError:
-            pass
+        processor.process(document_id, 1)
 
         with db_conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT parsed_result, anonymised_result,
-                       anonymised_artifacts, transliteration_mapping
+                       anonymised_artifacts, transliteration_mapping, normalized_result
                 FROM uploaded_documents WHERE id = %s
                 """,
                 (document_id,),
@@ -37,6 +34,7 @@ class TestProcessorPipeline:
         assert isinstance(row[1], str) and row[1].strip() != ""
         assert isinstance(row[2], dict) and "artifacts" in row[2]
         assert isinstance(row[3], list)
+        assert isinstance(row[4], dict) and "person" in row[4]
 
     def test_process_raises_document_not_found(self, seed_job, test_settings: Settings) -> None:
         processor = build_processor(test_settings)

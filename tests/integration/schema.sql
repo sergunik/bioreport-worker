@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS uploaded_documents (
     anonymised_artifacts JSONB NULL,
     transliteration_mapping JSONB NULL,
     normalized_result JSONB NULL,
+    final_result JSONB NULL,
     processed_at TIMESTAMP NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()

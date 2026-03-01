@@ -53,11 +53,15 @@ class TestJobRepositoryClaimNextJob:
 
 @pytest.mark.integration
 class TestJobRepositoryMarkDone:
-    def test_mark_done_updates_status(self, seed_job: JobRecord, db_conn) -> None:
+    def test_mark_done_updates_status_and_clears_error_and_locked(
+        self, seed_job: JobRecord, db_conn
+    ) -> None:
         with db_conn.cursor() as cur:
             cur.execute(
                 """
-                UPDATE pdf_jobs SET status = 'processing' WHERE id = %s
+                UPDATE pdf_jobs
+                SET status = 'processing', locked_at = NOW(), error_message = 'old error'
+                WHERE id = %s
                 """,
                 (seed_job.id,),
             )
@@ -67,12 +71,17 @@ class TestJobRepositoryMarkDone:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT status FROM pdf_jobs WHERE id = %s",
+                    """
+                    SELECT status, error_message, locked_at
+                    FROM pdf_jobs WHERE id = %s
+                    """,
                     (seed_job.id,),
                 )
                 row = cur.fetchone()
         assert row is not None
         assert row[0] == "done"
+        assert row[1] is None  # error_message cleared
+        assert row[2] is None  # locked_at cleared
 
 
 @pytest.mark.integration

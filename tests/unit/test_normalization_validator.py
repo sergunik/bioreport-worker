@@ -16,12 +16,15 @@ from app.normalization.validator import validate_and_build
 
 def _valid_data(
     markers: list[dict[str, object]] | None = None,
+    pii: list[str] | None = None,
 ) -> dict[str, object]:
     """Build a minimal valid normalization payload."""
     return {
         "person": {"name": "PERSON_1", "dob": "1990-01-01"},
         "diagnostic_date": "2025-01-10",
+        "language": "en",
         "markers": markers or [],
+        "pii": pii or [],
     }
 
 
@@ -359,4 +362,66 @@ class TestDiagnosticDateValidation:
         data = _valid_data()
         data["diagnostic_date"] = 12345
         with pytest.raises(NormalizationValidationError, match="diagnostic_date"):
+            validate_and_build(data)
+
+
+class TestLanguageValidation:
+    def test_language_string(self) -> None:
+        data = _valid_data()
+        data["language"] = "uk"
+        result = validate_and_build(data)
+        assert result.language == "uk"
+
+    def test_language_null(self) -> None:
+        data = _valid_data()
+        data["language"] = None
+        result = validate_and_build(data)
+        assert result.language is None
+
+    def test_language_missing_raises(self) -> None:
+        data = _valid_data()
+        del data["language"]
+        with pytest.raises(NormalizationValidationError, match=r"Missing required.*language"):
+            validate_and_build(data)
+
+    def test_language_wrong_type(self) -> None:
+        data = _valid_data()
+        data["language"] = 42
+        with pytest.raises(NormalizationValidationError, match="language"):
+            validate_and_build(data)
+
+
+class TestPiiValidation:
+    def test_pii_empty_list(self) -> None:
+        data = _valid_data(pii=[])
+        result = validate_and_build(data)
+        assert result.pii == []
+
+    def test_pii_with_values(self) -> None:
+        data = _valid_data(pii=["Jan Kowalski", "1990-01-01"])
+        result = validate_and_build(data)
+        assert result.pii == ["Jan Kowalski", "1990-01-01"]
+
+    def test_pii_missing_raises(self) -> None:
+        data = _valid_data()
+        del data["pii"]
+        with pytest.raises(NormalizationValidationError, match=r"Missing required.*pii"):
+            validate_and_build(data)
+
+    def test_pii_null_defaults_to_empty(self) -> None:
+        data = _valid_data()
+        data["pii"] = None
+        result = validate_and_build(data)
+        assert result.pii == []
+
+    def test_pii_not_list(self) -> None:
+        data = _valid_data()
+        data["pii"] = "not a list"
+        with pytest.raises(NormalizationValidationError, match=r"pii.*list"):
+            validate_and_build(data)
+
+    def test_pii_item_not_string(self) -> None:
+        data = _valid_data()
+        data["pii"] = ["valid", 42]
+        with pytest.raises(NormalizationValidationError, match=r"pii\[1\].*string"):
             validate_and_build(data)

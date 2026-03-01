@@ -68,12 +68,12 @@ class TestUploadedDocumentsRepositoryUpdateAnonymized:
         repo = UploadedDocumentsRepository()
         repo.update_anonymized_text(
             document_id,
-            "anon text",
+            anonymized_result="anon text",
             transliteration_mapping=[0, 1, 2],
         )
         repo.update_artifacts_payload(
             document_id,
-            {"artifacts": [{"type": "name", "value": "X"}]},
+            artifacts_payload={"artifacts": [{"type": "name", "value": "X"}]},
         )
         with db_conn.cursor() as cur:
             cur.execute(
@@ -98,3 +98,74 @@ class TestUploadedDocumentsRepositoryUpdateAnonymized:
         repo = UploadedDocumentsRepository()
         with pytest.raises(DocumentNotFoundError):
             repo.update_artifacts_payload(99999, {"artifacts": []})
+
+    def test_update_artifacts_payload_rejects_invalid_artifacts(
+        self, seed_document: tuple[int, str, int]
+    ) -> None:
+        document_id, *_ = seed_document
+        repo = UploadedDocumentsRepository()
+        with pytest.raises(ValueError, match="artifacts"):
+            repo.update_artifacts_payload(
+                document_id,
+                artifacts_payload={"wrong_key": []},
+            )
+
+
+@pytest.mark.integration
+class TestUploadedDocumentsRepositoryUpdateNormalizedResult:
+    def test_update_normalized_result_persists(
+        self, seed_document: tuple[int, str, int], db_conn
+    ) -> None:
+        document_id, *_ = seed_document
+        repo = UploadedDocumentsRepository()
+        normalized = {
+            "person": {"name": "PERSON_1", "dob": "1990-01-01"},
+            "diagnostic_date": "2025-01-10",
+            "language": "en",
+            "markers": [],
+            "pii": [],
+        }
+        repo.update_normalized_result(document_id, normalized_result=normalized)
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT normalized_result FROM uploaded_documents WHERE id = %s",
+                (document_id,),
+            )
+            row = cur.fetchone()
+        assert row is not None
+        assert row[0] == normalized
+
+    def test_update_normalized_result_raises_when_not_found(self) -> None:
+        repo = UploadedDocumentsRepository()
+        with pytest.raises(DocumentNotFoundError):
+            repo.update_normalized_result(99999, normalized_result={})
+
+
+@pytest.mark.integration
+class TestUploadedDocumentsRepositoryUpdateFinalResult:
+    def test_update_final_result_persists(
+        self, seed_document: tuple[int, str, int], db_conn
+    ) -> None:
+        document_id, *_ = seed_document
+        repo = UploadedDocumentsRepository()
+        final = {
+            "person": {"name": "John Doe", "dob": "1990-01-01"},
+            "diagnostic_date": "2025-01-10",
+            "language": "en",
+            "markers": [],
+            "pii": [],
+        }
+        repo.update_final_result(document_id, final_result=final)
+        with db_conn.cursor() as cur:
+            cur.execute(
+                "SELECT final_result FROM uploaded_documents WHERE id = %s",
+                (document_id,),
+            )
+            row = cur.fetchone()
+        assert row is not None
+        assert row[0] == final
+
+    def test_update_final_result_raises_when_not_found(self) -> None:
+        repo = UploadedDocumentsRepository()
+        with pytest.raises(DocumentNotFoundError):
+            repo.update_final_result(99999, final_result={})

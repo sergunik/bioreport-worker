@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.anonymization.models import AnonymizationResult
+from app.anonymization.models import AnonymizationResult, Artifact
 from app.database.repositories.job_repository import JobRepository
 from app.database.repositories.uploaded_documents_repository import UploadedDocumentsRepository
 from app.normalization.models import Marker, NormalizationResult, NumericValue, Person
@@ -14,6 +14,7 @@ from app.processor.models import UploadedDocument
 from app.processor.processor import Processor
 from app.processor.steps import (
     AnonymizeStep,
+    DeAnonymizeStep,
     ExtractArtifactsStep,
     ExtractTextStep,
     LoadDocumentStep,
@@ -22,6 +23,7 @@ from app.processor.steps import (
     NormalizeStep,
     PersistAnonymizedStep,
     PersistArtifactsStep,
+    PersistFinalResultStep,
     PersistNormalizedStep,
     PersistParsedStep,
 )
@@ -59,7 +61,9 @@ def _make_pipeline() -> tuple[
     document = _make_document()
     anon_result = AnonymizationResult(
         anonymized_text="Patient PERSON_1",
-        artifacts=[],
+        artifacts=[
+            Artifact(type="PERSON", original="John Doe", replacement="PERSON_1"),
+        ],
         transliteration_mapping=[0, 1, 2],
     )
     norm_result = NormalizationResult(
@@ -75,7 +79,9 @@ def _make_pipeline() -> tuple[
     pdf_extractor.extract.return_value = "Patient John Doe"
     doc_repo.get_sensitive_words.return_value = ["john", "doe"]
     anonymizer.anonymize.return_value = anon_result
-    artifacts_extractor.extract.return_value = {"artifacts": []}
+    artifacts_extractor.extract.return_value = {
+        "artifacts": [{"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"}]
+    }
     normalizer.normalize.return_value = norm_result
 
     steps = [
@@ -89,6 +95,8 @@ def _make_pipeline() -> tuple[
         PersistArtifactsStep(doc_repo=doc_repo),
         NormalizeStep(normalizer=normalizer),
         PersistNormalizedStep(doc_repo=doc_repo),
+        DeAnonymizeStep(),
+        PersistFinalResultStep(doc_repo=doc_repo),
     ]
     processor = Processor(steps=steps, failed_step=MarkFailedStep(job_repo))
     return (
@@ -127,14 +135,30 @@ class TestProcessorPipeline:
         )
         doc_repo.update_artifacts_payload.assert_called_once_with(
             1,
-            artifacts_payload={"artifacts": []},
+            artifacts_payload={
+                "artifacts": [
+                    {"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"}
+                ]
+            },
         )
         normalizer.normalize.assert_called_once_with("Patient PERSON_1")
         doc_repo.update_normalized_result.assert_called_once_with(
             1,
             normalized_result=asdict(normalizer.normalize.return_value),
         )
+        doc_repo.update_final_result.assert_called_once()
+        final_result = doc_repo.update_final_result.call_args.kwargs["final_result"]
+        assert final_result["person"]["name"] == "John Doe"
         job_repo.mark_failed.assert_not_called()
+
+    def test_final_result_is_de_anonymized(self) -> None:
+        processor, _loader, doc_repo, _pdf, _anon, _normalizer, _job_repo = _make_pipeline()
+
+        processor.process(uploaded_document_id=1, job_id=9)
+
+        final_call = doc_repo.update_final_result.call_args
+        final_result = final_call.kwargs["final_result"]
+        assert final_result["person"]["name"] == "John Doe"
 
     def test_marks_job_failed_and_reraises_on_step_error(self) -> None:
         processor, _loader, doc_repo, pdf_extractor, _anon, _norm, job_repo = _make_pipeline()
@@ -149,6 +173,7 @@ class TestProcessorPipeline:
         doc_repo.update_anonymized_text.assert_not_called()
         doc_repo.update_artifacts_payload.assert_not_called()
         doc_repo.update_normalized_result.assert_not_called()
+        doc_repo.update_final_result.assert_not_called()
 
     def test_mark_processing_runs_before_pipeline_work(self) -> None:
         (
@@ -181,18 +206,21 @@ class TestProcessorPipeline:
             call_order.append("anonymize"),
             AnonymizationResult(anonymized_text="anon", artifacts=[], transliteration_mapping=[]),
         )[1]
-        doc_repo.update_anonymized_text.side_effect = lambda *_args, **_kwargs: call_order.append(
-            "persist_anonymized"
+        doc_repo.update_anonymized_text.side_effect = (
+            lambda *_args, **_kwargs: call_order.append("persist_anonymized")
         )
-        doc_repo.update_artifacts_payload.side_effect = lambda *_args, **_kwargs: call_order.append(
-            "persist_artifacts"
+        doc_repo.update_artifacts_payload.side_effect = (
+            lambda *_args, **_kwargs: call_order.append("persist_artifacts")
         )
         normalizer.normalize.side_effect = lambda *_: (
             call_order.append("normalize"),
             NormalizationResult(person=Person(name="PERSON_1")),
         )[1]
-        doc_repo.update_normalized_result.side_effect = lambda *_args, **_kwargs: call_order.append(
-            "persist_normalized"
+        doc_repo.update_normalized_result.side_effect = (
+            lambda *_args, **_kwargs: call_order.append("persist_normalized")
+        )
+        doc_repo.update_final_result.side_effect = (
+            lambda *_args, **_kwargs: call_order.append("persist_final")
         )
 
         processor.process(uploaded_document_id=1, job_id=7)

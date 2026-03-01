@@ -35,12 +35,24 @@ class TestJobRunnerSuccess:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT status FROM pdf_jobs WHERE id = %s",
+                    "SELECT status, error_message, locked_at FROM pdf_jobs WHERE id = %s",
                     (job.id,),
                 )
                 row = cur.fetchone()
         assert row is not None
         assert row[0] == "done"
+        assert row[1] is None  # error_message cleared
+        assert row[2] is None  # locked_at cleared
+
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT processed_at FROM uploaded_documents WHERE id = %s",
+                    (document_id,),
+                )
+                doc_row = cur.fetchone()
+        assert doc_row is not None
+        assert doc_row[0] is not None  # processed_at set on document when pipeline completes
 
 
 @pytest.mark.integration

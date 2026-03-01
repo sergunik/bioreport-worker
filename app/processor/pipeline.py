@@ -20,6 +20,7 @@ class PipelineContext:
     )
     normalization_result: NormalizationResult | None = None
     normalized_payload: dict[str, object] = field(default_factory=dict)
+    final_result_payload: dict[str, object] = field(default_factory=dict)
     error_message: str = ""
 
 

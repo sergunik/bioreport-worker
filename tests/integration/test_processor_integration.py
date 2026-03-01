@@ -23,7 +23,8 @@ class TestProcessorPipeline:
             cur.execute(
                 """
                 SELECT parsed_result, anonymised_result,
-                       anonymised_artifacts, transliteration_mapping, normalized_result
+                       anonymised_artifacts, transliteration_mapping,
+                       normalized_result, final_result
                 FROM uploaded_documents WHERE id = %s
                 """,
                 (document_id,),
@@ -35,6 +36,7 @@ class TestProcessorPipeline:
         assert isinstance(row[2], dict) and "artifacts" in row[2]
         assert isinstance(row[3], list)
         assert isinstance(row[4], dict) and "person" in row[4]
+        assert isinstance(row[5], dict) and "person" in row[5]
 
     def test_process_raises_document_not_found(self, seed_job, test_settings: Settings) -> None:
         processor = build_processor(test_settings)

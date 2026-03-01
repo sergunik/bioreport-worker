@@ -32,7 +32,9 @@ def _full_response(markers: list[dict[str, object]] | None = None) -> str:
     return json.dumps({
         "person": {"name": "PERSON_1", "dob": "1985-03-15"},
         "diagnostic_date": "2025-01-10",
+        "language": "en",
         "markers": markers or [],
+        "pii": [],
     })
 
 
@@ -76,7 +78,9 @@ class TestFullNormalizationPipeline:
         content = json.dumps({
             "person": {"name": "PERSON_1", "dob": None},
             "diagnostic_date": None,
+            "language": None,
             "markers": [],
+            "pii": [],
         })
         normalizer = _make_normalizer(content)
         result = normalizer.normalize("text")

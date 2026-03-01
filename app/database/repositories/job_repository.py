@@ -51,12 +51,15 @@ class JobRepository:
         )
 
     def mark_done(self, job_id: int) -> None:
-        """Mark a job as done."""
+        """Mark a job as done and clear error fields."""
         with get_connection() as conn:
             conn.execute(
                 """
                 UPDATE pdf_jobs
-                SET status = 'done', updated_at = NOW()
+                SET status = 'done',
+                    error_message = NULL,
+                    locked_at = NULL,
+                    updated_at = NOW()
                 WHERE id = %s
                 """,
                 (job_id,),
@@ -110,7 +113,8 @@ class JobRepository:
                 cur.execute(
                     """
                     SELECT id, uploaded_document_id, status, attempts,
-                           error_message, locked_at, created_at, updated_at
+                           error_message, locked_at,
+                           created_at, updated_at
                     FROM pdf_jobs
                     WHERE id = %s
                     """,

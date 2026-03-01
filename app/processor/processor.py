@@ -45,7 +45,17 @@ class Processor:
                 context = step.run(context)
         except Exception as exc:
             context.error_message = str(exc)
-            self._failed_step.run(context)
+            try:
+                self._failed_step.run(context)
+            except Exception as fail_exc:
+                Log.error(
+                    "Failed to execute failure step",
+                    job_id=context.job_id,
+                    uploaded_document_id=context.uploaded_document_id,
+                    original_error=str(exc),
+                    failure_step_error=str(fail_exc),
+                )
+                raise
             raise
 
 

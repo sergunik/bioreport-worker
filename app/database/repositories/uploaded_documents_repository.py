@@ -136,54 +136,6 @@ class UploadedDocumentsRepository:
                     raise DocumentNotFoundError(f"Document {document_id} not found")
             conn.commit()
 
-    def update_anonymised_result(
-        self,
-        document_id: int,
-        anonymised_result: str,
-        artifacts_payload: dict[str, Any],
-        transliteration_mapping: list[int] | None = None,
-    ) -> None:
-        """Persist anonymized text, artifact mappings, and transliteration mapping.
-
-        Args:
-            document_id: Target document ID.
-            anonymised_result: Anonymized full text.
-            artifacts_payload: JSONB-ready dict with 'artifacts' key (list of artifact dicts).
-            transliteration_mapping: Optional list of code point mappings.
-
-        Raises:
-            DocumentNotFoundError: if no document with this ID exists.
-        """
-        artifacts = artifacts_payload.get("artifacts")
-        if not isinstance(artifacts, list):
-            raise ValueError("artifacts_payload must contain an 'artifacts' list")
-
-        transliteration_value = (
-            Jsonb(transliteration_mapping)
-            if transliteration_mapping is not None
-            else None
-        )
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE uploaded_documents
-                    SET anonymised_result = %s,
-                        anonymised_artifacts = %s,
-                        transliteration_mapping = %s
-                    WHERE id = %s
-                    """,
-                    (
-                        anonymised_result,
-                        Jsonb(artifacts_payload),
-                        transliteration_value,
-                        document_id,
-                    ),
-                )
-                if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
-            conn.commit()
-
     def update_parsed_result(self, document_id: int, parsed_result: str) -> None:
         """Persist extracted text into the parsed_result column.
 

@@ -60,17 +60,20 @@ class TestUploadedDocumentsRepositoryUpdateParsedResult:
 
 
 @pytest.mark.integration
-class TestUploadedDocumentsRepositoryUpdateAnonymisedResult:
-    def test_update_anonymised_result_persists_all_fields(
+class TestUploadedDocumentsRepositoryUpdateAnonymized:
+    def test_update_anonymized_text_and_artifacts_persist_all_fields(
         self, seed_document: tuple[int, str, int], db_conn
     ) -> None:
         document_id, *_ = seed_document
         repo = UploadedDocumentsRepository()
-        repo.update_anonymised_result(
+        repo.update_anonymized_text(
             document_id,
             "anon text",
-            {"artifacts": [{"type": "name", "value": "X"}]},
             transliteration_mapping=[0, 1, 2],
+        )
+        repo.update_artifacts_payload(
+            document_id,
+            {"artifacts": [{"type": "name", "value": "X"}]},
         )
         with db_conn.cursor() as cur:
             cur.execute(
@@ -86,9 +89,12 @@ class TestUploadedDocumentsRepositoryUpdateAnonymisedResult:
         assert row[1] == {"artifacts": [{"type": "name", "value": "X"}]}
         assert row[2] == [0, 1, 2]
 
-    def test_update_anonymised_result_raises_when_not_found(self) -> None:
+    def test_update_anonymized_text_raises_when_not_found(self) -> None:
         repo = UploadedDocumentsRepository()
         with pytest.raises(DocumentNotFoundError):
-            repo.update_anonymised_result(
-                99999, "x", {"artifacts": []}, transliteration_mapping=None
-            )
+            repo.update_anonymized_text(99999, "x", transliteration_mapping=None)
+
+    def test_update_artifacts_payload_raises_when_not_found(self) -> None:
+        repo = UploadedDocumentsRepository()
+        with pytest.raises(DocumentNotFoundError):
+            repo.update_artifacts_payload(99999, {"artifacts": []})

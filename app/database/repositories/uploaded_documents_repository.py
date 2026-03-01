@@ -62,6 +62,80 @@ class UploadedDocumentsRepository:
         raw: str = row[0]
         return raw.lower().split()
 
+    def update_anonymized_text(
+        self,
+        document_id: int,
+        anonymized_result: str,
+        transliteration_mapping: list[int] | None = None,
+    ) -> None:
+        """Persist anonymized text and transliteration mapping."""
+        transliteration_value = (
+            Jsonb(transliteration_mapping)
+            if transliteration_mapping is not None
+            else None
+        )
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET anonymised_result = %s,
+                        transliteration_mapping = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        anonymized_result,
+                        transliteration_value,
+                        document_id,
+                    ),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
+
+    def update_artifacts_payload(
+        self,
+        document_id: int,
+        artifacts_payload: dict[str, Any],
+    ) -> None:
+        """Persist anonymization artifacts payload."""
+        artifacts = artifacts_payload.get("artifacts")
+        if not isinstance(artifacts, list):
+            raise ValueError("artifacts_payload must contain an 'artifacts' list")
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET anonymised_artifacts = %s
+                    WHERE id = %s
+                    """,
+                    (Jsonb(artifacts_payload), document_id),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
+
+    def update_normalized_result(
+        self,
+        document_id: int,
+        normalized_result: dict[str, Any],
+    ) -> None:
+        """Persist normalized JSON result."""
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET normalized_result = %s
+                    WHERE id = %s
+                    """,
+                    (Jsonb(normalized_result), document_id),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
+
     def update_anonymised_result(
         self,
         document_id: int,

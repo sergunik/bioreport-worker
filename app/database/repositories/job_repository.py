@@ -63,6 +63,19 @@ class JobRepository:
             )
             conn.commit()
 
+    def mark_processing(self, job_id: int) -> None:
+        """Mark a job as processing."""
+        with get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE pdf_jobs
+                SET status = 'processing', locked_at = NOW(), updated_at = NOW()
+                WHERE id = %s
+                """,
+                (job_id,),
+            )
+            conn.commit()
+
     def mark_failed(self, job_id: int, error: str) -> None:
         """Mark a job as permanently failed."""
         with get_connection() as conn:

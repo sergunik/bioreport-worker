@@ -22,7 +22,9 @@ def de_anonymize_payload(
         A new dict with all placeholders replaced.
     """
     if not artifacts:
-        return payload
+        result = _replace_in_value(payload, [])
+        assert isinstance(result, dict)
+        return result
     replacements = {a.replacement: a.original for a in artifacts}
     sorted_pairs = sorted(
         replacements.items(),

@@ -158,12 +158,13 @@ class TestUploadedDocumentsRepositoryUpdateFinalResult:
         repo.update_final_result(document_id, final_result=final)
         with db_conn.cursor() as cur:
             cur.execute(
-                "SELECT final_result FROM uploaded_documents WHERE id = %s",
+                "SELECT final_result, processed_at FROM uploaded_documents WHERE id = %s",
                 (document_id,),
             )
             row = cur.fetchone()
         assert row is not None
         assert row[0] == final
+        assert row[1] is not None
 
     def test_update_final_result_raises_when_not_found(self) -> None:
         repo = UploadedDocumentsRepository()

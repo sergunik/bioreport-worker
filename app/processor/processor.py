@@ -12,6 +12,7 @@ from app.processor.file_loader import FileLoader
 from app.processor.pipeline import PipelineContext, PipelineStep
 from app.processor.steps import (
     AnonymizeStep,
+    DeAnonymizeStep,
     ExtractArtifactsStep,
     ExtractTextStep,
     LoadDocumentStep,
@@ -20,6 +21,7 @@ from app.processor.steps import (
     NormalizeStep,
     PersistAnonymizedStep,
     PersistArtifactsStep,
+    PersistFinalResultStep,
     PersistNormalizedStep,
     PersistParsedStep,
 )
@@ -82,5 +84,7 @@ def build_processor(
         PersistArtifactsStep(doc_repo=doc_repo),
         NormalizeStep(normalizer=normalizer),
         PersistNormalizedStep(doc_repo=doc_repo),
+        DeAnonymizeStep(),
+        PersistFinalResultStep(doc_repo=doc_repo),
     ]
     return Processor(steps=steps, failed_step=MarkFailedStep(job_repo))

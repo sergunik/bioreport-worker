@@ -1,6 +1,7 @@
 from dataclasses import asdict
 
 from app.anonymization.base import BaseAnonymizer
+from app.anonymization.de_anonymizer import de_anonymize_payload
 from app.database.repositories.job_repository import JobRepository
 from app.database.repositories.uploaded_documents_repository import UploadedDocumentsRepository
 from app.logging.logger import Log
@@ -104,6 +105,19 @@ class AnonymizeStep(PipelineStep):
         return context
 
 
+class ExtractArtifactsStep(PipelineStep):
+    def __init__(self, artifacts_extractor: ArtifactsExtractor) -> None:
+        self._artifacts_extractor = artifacts_extractor
+
+    def run(self, context: PipelineContext) -> PipelineContext:
+        if context.anonymization_result is None:
+            raise ValueError(
+                "PipelineContext.anonymization_result must be set before artifact extraction"
+            )
+        context.artifacts_payload = self._artifacts_extractor.extract(context.anonymization_result)
+        return context
+
+
 class PersistAnonymizedStep(PipelineStep):
     def __init__(self, doc_repo: UploadedDocumentsRepository) -> None:
         self._doc_repo = doc_repo
@@ -116,19 +130,6 @@ class PersistAnonymizedStep(PipelineStep):
             anonymized_result=context.anonymization_result.anonymized_text,
             transliteration_mapping=context.anonymization_result.transliteration_mapping,
         )
-        return context
-
-
-class ExtractArtifactsStep(PipelineStep):
-    def __init__(self, artifacts_extractor: ArtifactsExtractor) -> None:
-        self._artifacts_extractor = artifacts_extractor
-
-    def run(self, context: PipelineContext) -> PipelineContext:
-        if context.anonymization_result is None:
-            raise ValueError(
-                "PipelineContext.anonymization_result must be set before artifact extraction"
-            )
-        context.artifacts_payload = self._artifacts_extractor.extract(context.anonymization_result)
         return context
 
 
@@ -172,5 +173,39 @@ class PersistNormalizedStep(PipelineStep):
         self._doc_repo.update_normalized_result(
             context.uploaded_document_id,
             normalized_result=context.normalized_payload,
+        )
+        return context
+
+
+class DeAnonymizeStep(PipelineStep):
+    def run(self, context: PipelineContext) -> PipelineContext:
+        if context.anonymization_result is None:
+            raise ValueError(
+                "PipelineContext.anonymization_result must be set before de-anonymization"
+            )
+        if not context.normalized_payload:
+            raise ValueError(
+                "PipelineContext.normalized_payload must be set before de-anonymization"
+            )
+        context.final_result_payload = de_anonymize_payload(
+            context.normalized_payload,
+            context.anonymization_result.artifacts,
+        )
+        Log.info(f"De-anonymized document {context.uploaded_document_id}")
+        return context
+
+
+class PersistFinalResultStep(PipelineStep):
+    def __init__(self, doc_repo: UploadedDocumentsRepository) -> None:
+        self._doc_repo = doc_repo
+
+    def run(self, context: PipelineContext) -> PipelineContext:
+        if not context.final_result_payload:
+            raise ValueError(
+                "PipelineContext.final_result_payload must be set before persist"
+            )
+        self._doc_repo.update_final_result(
+            context.uploaded_document_id,
+            final_result=context.final_result_payload,
         )
         return context

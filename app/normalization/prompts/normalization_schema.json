@@ -4,7 +4,8 @@
     "person",
     "diagnostic_date",
     "language",
-    "markers"
+    "markers",
+    "pii"
   ],
   "properties": {
     "person": {
@@ -136,6 +137,13 @@
           }
         },
         "additionalProperties": false
+      }
+    },
+    "pii": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
       }
     }
   },

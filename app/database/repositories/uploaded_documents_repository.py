@@ -116,26 +116,6 @@ class UploadedDocumentsRepository:
                     raise DocumentNotFoundError(f"Document {document_id} not found")
             conn.commit()
 
-    def update_normalized_result(
-        self,
-        document_id: int,
-        normalized_result: dict[str, Any],
-    ) -> None:
-        """Persist normalized JSON result."""
-        with get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    UPDATE uploaded_documents
-                    SET normalized_result = %s
-                    WHERE id = %s
-                    """,
-                    (Jsonb(normalized_result), document_id),
-                )
-                if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
-            conn.commit()
-
     def update_parsed_result(self, document_id: int, parsed_result: str) -> None:
         """Persist extracted text into the parsed_result column.
 
@@ -151,6 +131,55 @@ class UploadedDocumentsRepository:
                     WHERE id = %s
                     """,
                     (parsed_result, document_id),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
+
+    def update_normalized_result(
+        self,
+        document_id: int,
+        normalized_result: dict[str, Any],
+    ) -> None:
+        """Persist raw normalized JSON as returned by the AI provider.
+
+        Raises:
+            DocumentNotFoundError: if no document with this ID exists.
+        """
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET normalized_result = %s
+                    WHERE id = %s
+                    """,
+                    (Jsonb(normalized_result), document_id),
+                )
+                if cur.rowcount == 0:
+                    raise DocumentNotFoundError(f"Document {document_id} not found")
+            conn.commit()
+
+    def update_final_result(
+        self,
+        document_id: int,
+        final_result: dict[str, Any],
+    ) -> None:
+        """Persist de-anonymized final JSON output and mark processing complete.
+
+        Raises:
+            DocumentNotFoundError: if no document with this ID exists.
+        """
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE uploaded_documents
+                    SET final_result = %s,
+                        processed_at = NOW()
+                    WHERE id = %s
+                    """,
+                    (Jsonb(final_result), document_id),
                 )
                 if cur.rowcount == 0:
                     raise DocumentNotFoundError(f"Document {document_id} not found")

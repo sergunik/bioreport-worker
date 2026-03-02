@@ -29,12 +29,20 @@ def validate_and_build(data: dict[str, Any]) -> NormalizationResult:
     _require_top_level_fields(data)
     person = _build_person(data["person"])
     diagnostic_date = _build_diagnostic_date(data.get("diagnostic_date"))
+    language = _build_language(data.get("language"))
     markers = _build_markers(data["markers"])
-    return NormalizationResult(person=person, diagnostic_date=diagnostic_date, markers=markers)
+    pii = _build_pii(data.get("pii"))
+    return NormalizationResult(
+        person=person,
+        diagnostic_date=diagnostic_date,
+        language=language,
+        markers=markers,
+        pii=pii,
+    )
 
 
 def _require_top_level_fields(data: dict[str, Any]) -> None:
-    for field in ("person", "diagnostic_date", "markers"):
+    for field in ("person", "diagnostic_date", "language", "markers", "pii"):
         if field not in data:
             raise NormalizationValidationError(f"Missing required top-level field: {field}")
 
@@ -56,6 +64,25 @@ def _build_diagnostic_date(raw: Any) -> str | None:
         return None
     if not isinstance(raw, str):
         raise NormalizationValidationError("'diagnostic_date' must be a string or null")
+    return raw
+
+
+def _build_language(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise NormalizationValidationError("'language' must be a string or null")
+    return raw
+
+
+def _build_pii(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    if not isinstance(raw, list):
+        raise NormalizationValidationError("'pii' must be a list")
+    for i, item in enumerate(raw):
+        if not isinstance(item, str):
+            raise NormalizationValidationError(f"'pii[{i}]' must be a string")
     return raw
 
 

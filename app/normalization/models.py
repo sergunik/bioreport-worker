@@ -62,4 +62,6 @@ class NormalizationResult:
 
     person: Person
     diagnostic_date: str | None = None
+    language: str | None = None
     markers: list[Marker] = field(default_factory=list)
+    pii: list[str] = field(default_factory=list)

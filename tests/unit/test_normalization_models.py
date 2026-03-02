@@ -66,3 +66,14 @@ class TestNormalizationResult:
         result = NormalizationResult(person=Person(name="PERSON_1"))
         assert result.markers == []
         assert result.diagnostic_date is None
+        assert result.language is None
+        assert result.pii == []
+
+    def test_with_language_and_pii(self) -> None:
+        result = NormalizationResult(
+            person=Person(name="PERSON_1"),
+            language="uk",
+            pii=["Jan Kowalski"],
+        )
+        assert result.language == "uk"
+        assert result.pii == ["Jan Kowalski"]

@@ -20,7 +20,9 @@ class ExampleClientAdapter(BaseNormalizationClient):
     DEFAULT_RESPONSE: ClassVar[dict[str, object]] = {
         "person": {"name": "PERSON_1", "dob": None},
         "diagnostic_date": None,
+        "language": None,
         "markers": [],
+        "pii": [],
     }
 
     def __init__(self) -> None:

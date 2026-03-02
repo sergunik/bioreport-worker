@@ -54,6 +54,16 @@ REFERENCE RANGE:
 - If unclear, return null.
 
 ------------------------------------
+5. PII (Personally Identifiable Information)
+------------------------------------
+- Detect all sensitive words remaining in the text (names, surnames, dates, addresses, etc.).
+- Ignore anonymization placeholders (e.g., PERSON_1, EMAIL_2).
+- Ignore laboratory marker names and values.
+- Return only real sensitive values that appear in the text.
+- Return an array of unique sensitive values found in the text.
+- Return an empty array if no sensitive values are found.
+
+------------------------------------
 
 Respond with ONLY a valid JSON object matching this exact schema:
 

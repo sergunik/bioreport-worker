@@ -22,6 +22,7 @@ def _valid_data(
     return {
         "person": {"name": "PERSON_1", "dob": "1990-01-01"},
         "diagnostic_date": "2025-01-10",
+        "diagnostic_title": "Blood panel",
         "language": "en",
         "markers": markers or [],
         "pii": pii or [],
@@ -120,6 +121,7 @@ class TestValidPayloads:
         assert isinstance(result.person, Person)
         assert result.person.name == "PERSON_1"
         assert result.person.dob == "1990-01-01"
+        assert result.diagnostic_title == "Blood panel"
 
     def test_multiple_markers_different_types(self) -> None:
         data = _valid_data(markers=[
@@ -166,6 +168,12 @@ class TestMissingTopLevelFields:
         with pytest.raises(NormalizationValidationError, match="markers"):
             validate_and_build(data)
 
+    def test_missing_diagnostic_title(self) -> None:
+        data = _valid_data()
+        del data["diagnostic_title"]
+        with pytest.raises(NormalizationValidationError, match="diagnostic_title"):
+            validate_and_build(data)
+
 
 class TestPersonValidation:
     def test_person_not_dict(self) -> None:
@@ -191,6 +199,38 @@ class TestPersonValidation:
         data["person"] = {"name": "PERSON_1", "dob": 123}
         with pytest.raises(NormalizationValidationError, match=r"person\.dob"):
             validate_and_build(data)
+
+
+class TestDiagnosticTitleValidation:
+    def test_diagnostic_title_passed_through(self) -> None:
+        data = _valid_data()
+        data["diagnostic_title"] = "CBC"
+        result = validate_and_build(data)
+        assert result.diagnostic_title == "CBC"
+
+    def test_diagnostic_title_wrong_type(self) -> None:
+        data = _valid_data()
+        data["diagnostic_title"] = 123
+        with pytest.raises(NormalizationValidationError, match="diagnostic_title"):
+            validate_and_build(data)
+
+    def test_diagnostic_title_null_invalid(self) -> None:
+        data = _valid_data()
+        data["diagnostic_title"] = None
+        with pytest.raises(NormalizationValidationError, match="diagnostic_title"):
+            validate_and_build(data)
+
+    def test_diagnostic_title_over_50_chars(self) -> None:
+        data = _valid_data()
+        data["diagnostic_title"] = "x" * 51
+        with pytest.raises(NormalizationValidationError, match="50"):
+            validate_and_build(data)
+
+    def test_diagnostic_title_exactly_50_ok(self) -> None:
+        data = _valid_data()
+        data["diagnostic_title"] = "x" * 50
+        result = validate_and_build(data)
+        assert result.diagnostic_title == "x" * 50
 
 
 class TestMarkersValidation:

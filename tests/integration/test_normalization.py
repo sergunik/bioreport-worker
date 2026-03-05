@@ -32,6 +32,7 @@ def _full_response(markers: list[dict[str, object]] | None = None) -> str:
     return json.dumps({
         "person": {"name": "PERSON_1", "dob": "1985-03-15"},
         "diagnostic_date": "2025-01-10",
+        "diagnostic_title": "Blood panel",
         "language": "en",
         "markers": markers or [],
         "pii": [],
@@ -64,6 +65,7 @@ class TestFullNormalizationPipeline:
         assert result.person.name == "PERSON_1"
         assert result.person.dob == "1985-03-15"
         assert result.diagnostic_date == "2025-01-10"
+        assert result.diagnostic_title == "Blood panel"
         assert result.language == "en"
         assert result.pii == []
         assert len(result.markers) == 3
@@ -80,6 +82,7 @@ class TestFullNormalizationPipeline:
         content = json.dumps({
             "person": {"name": "PERSON_1", "dob": None},
             "diagnostic_date": None,
+            "diagnostic_title": "Lab report",
             "language": None,
             "markers": [],
             "pii": [],

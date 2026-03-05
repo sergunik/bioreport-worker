@@ -54,7 +54,14 @@ REFERENCE RANGE:
 - If unclear, return null.
 
 ------------------------------------
-5. PII (Personally Identifiable Information)
+5. DIAGNOSTIC TITLE
+------------------------------------
+- Provide a short, concise title for the diagnosis based on the overall document (e.g. type of panel, examination, or report).
+- Use the language indicated in the "language" field. If "language" is null, use English.
+- Maximum 50 characters.
+
+------------------------------------
+6. PII (Personally Identifiable Information)
 ------------------------------------
 - Detect all sensitive words remaining in the text (names, surnames, dates, addresses, etc.).
 - Ignore anonymization placeholders (e.g., PERSON_1, EMAIL_2).

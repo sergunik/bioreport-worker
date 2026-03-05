@@ -3,6 +3,7 @@
   "required": [
     "person",
     "diagnostic_date",
+    "diagnostic_title",
     "language",
     "markers",
     "pii"
@@ -40,6 +41,10 @@
         "string",
         "null"
       ]
+    },
+    "diagnostic_title": {
+      "type": "string",
+      "maxLength": 50
     },
     "markers": {
       "type": "array",
@@ -141,7 +146,6 @@
     },
     "pii": {
       "type": "array",
-      "uniqueItems": true,
       "items": {
         "type": "string"
       }

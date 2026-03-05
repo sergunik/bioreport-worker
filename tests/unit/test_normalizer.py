@@ -31,6 +31,7 @@ def _valid_json_response(
     return json.dumps({
         "person": {"name": "PERSON_1", "dob": "1990-01-01"},
         "diagnostic_date": "2025-01-10",
+        "diagnostic_title": "Blood panel",
         "language": "en",
         "markers": markers or [],
         "pii": pii or [],

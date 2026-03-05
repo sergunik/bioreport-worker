@@ -19,6 +19,7 @@ class TestExampleClientAdapter:
         parsed = json.loads(result)
         assert "person" in parsed
         assert "diagnostic_date" in parsed
+        assert "diagnostic_title" in parsed
         assert "markers" in parsed
 
     def test_returns_valid_normalization_structure(self) -> None:
@@ -34,6 +35,7 @@ class TestExampleClientAdapter:
         assert data["person"]["name"] == "PERSON_1"
         assert data["person"]["dob"] is None
         assert data["diagnostic_date"] is None
+        assert data["diagnostic_title"] == "Laboratory panel"
         assert data["markers"] == []
 
     def test_ignores_input_parameters(self) -> None:

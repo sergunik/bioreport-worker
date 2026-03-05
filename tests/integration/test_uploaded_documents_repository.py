@@ -121,6 +121,7 @@ class TestUploadedDocumentsRepositoryUpdateNormalizedResult:
         normalized = {
             "person": {"name": "PERSON_1", "dob": "1990-01-01"},
             "diagnostic_date": "2025-01-10",
+            "diagnostic_title": "Blood panel",
             "language": "en",
             "markers": [],
             "pii": [],
@@ -151,6 +152,7 @@ class TestUploadedDocumentsRepositoryUpdateFinalResult:
         final = {
             "person": {"name": "John Doe", "dob": "1990-01-01"},
             "diagnostic_date": "2025-01-10",
+            "diagnostic_title": "Blood panel",
             "language": "en",
             "markers": [],
             "pii": [],

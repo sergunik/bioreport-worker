@@ -29,12 +29,14 @@ def validate_and_build(data: dict[str, Any]) -> NormalizationResult:
     _require_top_level_fields(data)
     person = _build_person(data["person"])
     diagnostic_date = _build_diagnostic_date(data.get("diagnostic_date"))
+    diagnostic_title = _build_diagnostic_title(data.get("diagnostic_title"))
     language = _build_language(data.get("language"))
     markers = _build_markers(data["markers"])
     pii = _build_pii(data.get("pii"))
     return NormalizationResult(
         person=person,
         diagnostic_date=diagnostic_date,
+        diagnostic_title=diagnostic_title,
         language=language,
         markers=markers,
         pii=pii,
@@ -42,7 +44,7 @@ def validate_and_build(data: dict[str, Any]) -> NormalizationResult:
 
 
 def _require_top_level_fields(data: dict[str, Any]) -> None:
-    for field in ("person", "diagnostic_date", "language", "markers", "pii"):
+    for field in ("person", "diagnostic_date", "diagnostic_title", "language", "markers", "pii"):
         if field not in data:
             raise NormalizationValidationError(f"Missing required top-level field: {field}")
 
@@ -73,6 +75,20 @@ def _build_language(raw: Any) -> str | None:
     if not isinstance(raw, str):
         raise NormalizationValidationError("'language' must be a string or null")
     return raw
+
+
+_MAX_DIAGNOSTIC_TITLE_LEN = 50
+
+
+def _build_diagnostic_title(raw: Any) -> str:
+    if raw is None or not isinstance(raw, str):
+        raise NormalizationValidationError("'diagnostic_title' must be a string")
+    title: str = raw
+    if len(title) > _MAX_DIAGNOSTIC_TITLE_LEN:
+        raise NormalizationValidationError(
+            f"'diagnostic_title' must be at most {_MAX_DIAGNOSTIC_TITLE_LEN} characters"
+        )
+    return title
 
 
 def _build_pii(raw: Any) -> list[str]:

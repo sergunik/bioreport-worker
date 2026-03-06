@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, NoReturn
 
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
@@ -10,6 +10,9 @@ from app.processor.models import UploadedDocument
 
 class UploadedDocumentsRepository:
     """Database operations for the uploaded_documents table."""
+
+    def _document_not_found_error(self, document_uuid: str) -> NoReturn:
+        raise DocumentNotFoundError(f"Document {document_uuid} not found")
 
     def find_by_uuid(self, document_uuid: str) -> UploadedDocument:
         """Find an uploaded document by UUID.
@@ -31,7 +34,7 @@ class UploadedDocumentsRepository:
                 row = cur.fetchone()
 
         if row is None:
-            raise DocumentNotFoundError(f"Document {document_uuid} not found")
+            self._document_not_found_error(document_uuid)
 
         return UploadedDocument(
             uuid=str(row["uuid"]),
@@ -89,7 +92,7 @@ class UploadedDocumentsRepository:
                     ),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
+                    self._document_not_found_error(document_uuid)
             conn.commit()
 
     def update_artifacts_payload(
@@ -112,7 +115,7 @@ class UploadedDocumentsRepository:
                     (Jsonb(artifacts_payload), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
+                    self._document_not_found_error(document_uuid)
             conn.commit()
 
     def update_parsed_result(self, document_uuid: str, parsed_result: str) -> None:
@@ -132,7 +135,7 @@ class UploadedDocumentsRepository:
                     (parsed_result, document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
+                    self._document_not_found_error(document_uuid)
             conn.commit()
 
     def update_normalized_result(
@@ -156,7 +159,7 @@ class UploadedDocumentsRepository:
                     (Jsonb(normalized_result), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
+                    self._document_not_found_error(document_uuid)
             conn.commit()
 
     def update_final_result(
@@ -181,5 +184,5 @@ class UploadedDocumentsRepository:
                     (Jsonb(final_result), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
+                    self._document_not_found_error(document_uuid)
             conn.commit()

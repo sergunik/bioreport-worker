@@ -34,7 +34,6 @@ class UploadedDocumentsRepository:
             raise DocumentNotFoundError(f"Document {document_uuid} not found")
 
         return UploadedDocument(
-            id=row.get("id", 0),
             uuid=str(row["uuid"]),
             user_id=row["user_id"],
             storage_disk=row["storage_disk"],

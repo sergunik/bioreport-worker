@@ -31,7 +31,6 @@ from app.processor.steps import (
 
 def _make_document() -> UploadedDocument:
     return UploadedDocument(
-        id=1,
         uuid="abc-123",
         user_id=10,
         storage_disk="local",

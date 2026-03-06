@@ -11,7 +11,6 @@ NIL_UUID = "00000000-0000-0000-0000-000000000000"
 
 def _make_row() -> dict:
     return {
-        "id": 1,
         "uuid": "550e8400-e29b-41d4-a716-446655440000",
         "user_id": 10,
         "storage_disk": "local",
@@ -43,7 +42,6 @@ class TestFindByUuid:
         result = repo.find_by_uuid(doc_uuid)
 
         assert isinstance(result, UploadedDocument)
-        assert result.id == 1
         assert result.uuid == doc_uuid
         assert result.user_id == 10
         assert result.storage_disk == "local"

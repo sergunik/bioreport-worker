@@ -34,7 +34,6 @@ class TestFileLoaderLoad:
 
     def test_load_raises_unsupported_storage_disk(self) -> None:
         document = UploadedDocument(
-            id=1,
             uuid="x",
             user_id=1,
             storage_disk="s3",

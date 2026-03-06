@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS uploaded_documents (
-    id BIGSERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     user_id BIGINT NOT NULL,
     storage_disk VARCHAR(10) NOT NULL,

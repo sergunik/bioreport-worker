@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 class UploadedDocument:
     """Domain model for an uploaded document (subset of DB columns)."""
 
-    id: int
     uuid: str
     user_id: int
     storage_disk: str

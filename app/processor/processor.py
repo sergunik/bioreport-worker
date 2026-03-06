@@ -36,10 +36,10 @@ class Processor:
         self._steps = steps
         self._failed_step = failed_step
 
-    def process(self, uploaded_document_id: int, job_id: int) -> None:
-        Log.info(f"Processing document {uploaded_document_id} for job {job_id}")
+    def process(self, uploaded_document_uuid: str, job_id: int) -> None:
+        Log.info(f"Processing document {uploaded_document_uuid} for job {job_id}")
         context = PipelineContext(
-            uploaded_document_id=uploaded_document_id,
+            uploaded_document_uuid=uploaded_document_uuid,
             job_id=job_id,
         )
         try:
@@ -53,7 +53,7 @@ class Processor:
                 Log.error(
                     "Failed to execute failure step",
                     job_id=context.job_id,
-                    uploaded_document_id=context.uploaded_document_id,
+                    uploaded_document_uuid=context.uploaded_document_uuid,
                     original_error=str(exc),
                     failure_step_error=str(fail_exc),
                 )

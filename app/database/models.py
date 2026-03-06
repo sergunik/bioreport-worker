@@ -7,7 +7,7 @@ class JobRecord:
     """Represents a row from the pdf_jobs table."""
 
     id: int
-    uploaded_document_id: int
+    uploaded_document_uuid: str
     status: str
     attempts: int
     error_message: str | None = None

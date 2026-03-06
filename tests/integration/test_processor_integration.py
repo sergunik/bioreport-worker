@@ -15,9 +15,9 @@ class TestProcessorPipeline:
         test_settings: Settings,
         db_conn,
     ) -> None:
-        document_id, _doc_uuid, files_root = sample_pdf_on_disk
+        _doc_id, doc_uuid, files_root = sample_pdf_on_disk
         processor = build_processor(test_settings, files_root=files_root)
-        processor.process(document_id, 1)
+        processor.process(doc_uuid, 1)
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -25,9 +25,9 @@ class TestProcessorPipeline:
                 SELECT parsed_result, anonymised_result,
                        anonymised_artifacts, transliteration_mapping,
                        normalized_result, final_result
-                FROM uploaded_documents WHERE id = %s
+                FROM uploaded_documents WHERE uuid = %s::uuid
                 """,
-                (document_id,),
+                (doc_uuid,),
             )
             row = cur.fetchone()
         assert row is not None
@@ -49,7 +49,7 @@ class TestProcessorPipeline:
     def test_process_raises_document_not_found(self, seed_job, test_settings: Settings) -> None:
         processor = build_processor(test_settings)
         with pytest.raises(DocumentNotFoundError):
-            processor.process(99999, seed_job.id)
+            processor.process("00000000-0000-0000-0000-000000000000", seed_job.id)
 
     def test_process_raises_file_not_found(
         self,
@@ -58,7 +58,7 @@ class TestProcessorPipeline:
         test_settings: Settings,
         files_root,
     ) -> None:
-        document_id = seed_document[0]
+        _document_id, doc_uuid, _ = seed_document
         processor = build_processor(test_settings, files_root=files_root)
         with pytest.raises(FileNotFoundError):
-            processor.process(document_id, seed_job.id)
+            processor.process(doc_uuid, seed_job.id)

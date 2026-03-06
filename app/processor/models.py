@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 class UploadedDocument:
     """Domain model for an uploaded document (subset of DB columns)."""
 
-    id: int
     uuid: str
     user_id: int
     storage_disk: str
@@ -18,7 +17,7 @@ class UploadedDocument:
 class ProcessorResult:
     """Accumulates data as the document moves through pipeline steps."""
 
-    document_id: int
+    document_uuid: str
     raw_bytes: bytes = b""
     extracted_text: str = ""
     anonymized_text: str = ""

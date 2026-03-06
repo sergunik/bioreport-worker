@@ -8,7 +8,7 @@ from app.processor.models import UploadedDocument
 
 @dataclass(slots=True)
 class PipelineContext:
-    uploaded_document_id: int
+    uploaded_document_uuid: str
     job_id: int
     document: UploadedDocument | None = None
     raw_bytes: bytes = b""

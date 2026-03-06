@@ -22,7 +22,7 @@ class JobRunner:
         """Execute a single job with error handling."""
         Log.info(f"Running job {job.id} (attempt {job.attempts + 1})")
         try:
-            self._processor.process(job.uploaded_document_id, job.id)
+            self._processor.process(job.uploaded_document_uuid, job.id)
             self._job_repo.mark_done(job.id)
             Log.info(f"Job {job.id} completed successfully")
         except Exception as exc:

@@ -14,7 +14,12 @@ def _make_worker() -> tuple[Worker, MagicMock, MagicMock]:
 
 
 def _make_job(job_id: int = 1) -> JobRecord:
-    return JobRecord(id=job_id, uploaded_document_id=10, status="processing", attempts=0)
+    return JobRecord(
+        id=job_id,
+        uploaded_document_uuid="550e8400-e29b-41d4-a716-446655440000",
+        status="processing",
+        attempts=0,
+    )
 
 
 class TestWorkerDispatch:

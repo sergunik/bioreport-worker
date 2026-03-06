@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS uploaded_documents (
-    id BIGSERIAL PRIMARY KEY,
     uuid UUID NOT NULL UNIQUE,
     user_id BIGINT NOT NULL,
     storage_disk VARCHAR(10) NOT NULL,
@@ -19,7 +18,7 @@ CREATE TABLE IF NOT EXISTS uploaded_documents (
 
 CREATE TABLE IF NOT EXISTS pdf_jobs (
     id BIGSERIAL PRIMARY KEY,
-    uploaded_document_id BIGINT NOT NULL REFERENCES uploaded_documents(id) ON DELETE CASCADE,
+    uploaded_document_uuid UUID NOT NULL REFERENCES uploaded_documents(uuid) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL DEFAULT 'pending',
     attempts INTEGER NOT NULL DEFAULT 0,
     error_message TEXT NULL,

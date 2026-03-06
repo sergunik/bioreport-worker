@@ -12,7 +12,6 @@ def _make_document(
     uuid: str = "abc-123",
 ) -> UploadedDocument:
     return UploadedDocument(
-        id=1,
         uuid=uuid,
         user_id=10,
         storage_disk=storage_disk,

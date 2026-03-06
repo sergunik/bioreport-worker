@@ -42,12 +42,12 @@ class LoadDocumentStep(PipelineStep):
         self._doc_repo = doc_repo
 
     def run(self, context: PipelineContext) -> PipelineContext:
-        document = self._doc_repo.find_by_id(context.uploaded_document_id)
+        document = self._doc_repo.find_by_uuid(context.uploaded_document_uuid)
         raw_bytes = self._file_loader.load(document)
         context.document = document
         context.raw_bytes = raw_bytes
         Log.info(
-            f"Loaded {len(raw_bytes)} bytes for document {context.uploaded_document_id}"
+            f"Loaded {len(raw_bytes)} bytes for document {context.uploaded_document_uuid}"
         )
         return context
 
@@ -60,7 +60,7 @@ class ExtractTextStep(PipelineStep):
         context.extracted_text = self._pdf_extractor.extract(context.raw_bytes)
         Log.info(
             f"Extracted {len(context.extracted_text)} chars from document "
-            f"{context.uploaded_document_id}"
+            f"{context.uploaded_document_uuid}"
         )
         return context
 
@@ -71,7 +71,7 @@ class PersistParsedStep(PipelineStep):
 
     def run(self, context: PipelineContext) -> PipelineContext:
         self._doc_repo.update_parsed_result(
-            context.uploaded_document_id,
+            context.uploaded_document_uuid,
             context.extracted_text,
         )
         return context
@@ -99,7 +99,7 @@ class AnonymizeStep(PipelineStep):
             sensitive_words=sensitive_words,
         )
         Log.info(
-            f"Anonymized document {context.uploaded_document_id}: "
+            f"Anonymized document {context.uploaded_document_uuid}: "
             f"{len(context.anonymization_result.artifacts)} artifacts found"
         )
         return context
@@ -126,7 +126,7 @@ class PersistAnonymizedStep(PipelineStep):
         if context.anonymization_result is None:
             raise ValueError("PipelineContext.anonymization_result must be set before persist")
         self._doc_repo.update_anonymized_text(
-            context.uploaded_document_id,
+            context.uploaded_document_uuid,
             anonymized_result=context.anonymization_result.anonymized_text,
             transliteration_mapping=context.anonymization_result.transliteration_mapping,
         )
@@ -139,7 +139,7 @@ class PersistArtifactsStep(PipelineStep):
 
     def run(self, context: PipelineContext) -> PipelineContext:
         self._doc_repo.update_artifacts_payload(
-            context.uploaded_document_id,
+            context.uploaded_document_uuid,
             artifacts_payload=context.artifacts_payload,
         )
         return context
@@ -157,7 +157,7 @@ class NormalizeStep(PipelineStep):
         result = self._normalizer.normalize(context.anonymization_result.anonymized_text)
         context.normalization_result = result
         Log.info(
-            f"Normalized document {context.uploaded_document_id}: {len(result.markers)} markers"
+            f"Normalized document {context.uploaded_document_uuid}: {len(result.markers)} markers"
         )
         return context
 
@@ -171,7 +171,7 @@ class PersistNormalizedStep(PipelineStep):
             raise ValueError("PipelineContext.normalization_result must be set before persist")
         context.normalized_payload = asdict(context.normalization_result)
         self._doc_repo.update_normalized_result(
-            context.uploaded_document_id,
+            context.uploaded_document_uuid,
             normalized_result=context.normalized_payload,
         )
         return context
@@ -191,7 +191,7 @@ class DeAnonymizeStep(PipelineStep):
             context.normalized_payload,
             context.anonymization_result.artifacts,
         )
-        Log.info(f"De-anonymized document {context.uploaded_document_id}")
+        Log.info(f"De-anonymized document {context.uploaded_document_uuid}")
         return context
 
 
@@ -205,7 +205,7 @@ class PersistFinalResultStep(PipelineStep):
                 "PipelineContext.final_result_payload must be set before persist"
             )
         self._doc_repo.update_final_result(
-            context.uploaded_document_id,
+            context.uploaded_document_uuid,
             final_result=context.final_result_payload,
         )
         return context

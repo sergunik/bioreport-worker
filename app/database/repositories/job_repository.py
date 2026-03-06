@@ -18,7 +18,7 @@ class JobRepository:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT id, uploaded_document_id, status, attempts
+                SELECT id, uploaded_document_uuid, status, attempts
                 FROM pdf_jobs
                 WHERE status = 'pending'
                   AND attempts < %s
@@ -45,7 +45,7 @@ class JobRepository:
 
         return JobRecord(
             id=row["id"],
-            uploaded_document_id=row["uploaded_document_id"],
+            uploaded_document_uuid=str(row["uploaded_document_uuid"]),
             status="processing",
             attempts=row["attempts"],
         )
@@ -112,7 +112,7 @@ class JobRepository:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, uploaded_document_id, status, attempts,
+                    SELECT id, uploaded_document_uuid, status, attempts,
                            error_message, locked_at,
                            created_at, updated_at
                     FROM pdf_jobs
@@ -127,7 +127,7 @@ class JobRepository:
 
         return JobRecord(
             id=row["id"],
-            uploaded_document_id=row["uploaded_document_id"],
+            uploaded_document_uuid=str(row["uploaded_document_uuid"]),
             status=row["status"],
             attempts=row["attempts"],
             error_message=row["error_message"],

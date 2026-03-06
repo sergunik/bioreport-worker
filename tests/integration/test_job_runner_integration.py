@@ -20,10 +20,10 @@ class TestJobRunnerSuccess:
         seed_job: JobRecord,
         test_settings: Settings,
     ) -> None:
-        document_id, _doc_uuid, files_root = sample_pdf_on_disk
+        _doc_id, doc_uuid, files_root = sample_pdf_on_disk
         job = JobRecord(
             id=seed_job.id,
-            uploaded_document_id=document_id,
+            uploaded_document_uuid=doc_uuid,
             status="pending",
             attempts=0,
         )
@@ -47,8 +47,8 @@ class TestJobRunnerSuccess:
         with get_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT processed_at FROM uploaded_documents WHERE id = %s",
-                    (document_id,),
+                    "SELECT processed_at FROM uploaded_documents WHERE uuid = %s::uuid",
+                    (doc_uuid,),
                 )
                 doc_row = cur.fetchone()
         assert doc_row is not None
@@ -93,7 +93,7 @@ class TestJobRunnerRetry:
         db_conn.commit()
         job = JobRecord(
             id=seed_job.id,
-            uploaded_document_id=seed_job.uploaded_document_id,
+            uploaded_document_uuid=seed_job.uploaded_document_uuid,
             status="processing",
             attempts=2,
         )

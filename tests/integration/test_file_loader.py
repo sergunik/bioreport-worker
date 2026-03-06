@@ -15,9 +15,9 @@ class TestFileLoaderLoad:
         sample_pdf_on_disk: tuple[int, str, object],
         sample_pdf_bytes: bytes,
     ) -> None:
-        document_id, _doc_uuid, files_root = sample_pdf_on_disk
+        _document_id, doc_uuid, files_root = sample_pdf_on_disk
         repo = UploadedDocumentsRepository()
-        document = repo.find_by_id(document_id)
+        document = repo.find_by_uuid(doc_uuid)
         loader = FileLoader(files_root=files_root)
         result = loader.load(document)
         assert result == sample_pdf_bytes
@@ -25,16 +25,15 @@ class TestFileLoaderLoad:
     def test_load_raises_file_not_found(
         self, seed_document: tuple[int, str, int], files_root: object
     ) -> None:
-        document_id, *_ = seed_document
+        _document_id, doc_uuid, _ = seed_document
         repo = UploadedDocumentsRepository()
-        document = repo.find_by_id(document_id)
+        document = repo.find_by_uuid(doc_uuid)
         loader = FileLoader(files_root=files_root)
         with pytest.raises(FileNotFoundError, match="File not found"):
             loader.load(document)
 
     def test_load_raises_unsupported_storage_disk(self) -> None:
         document = UploadedDocument(
-            id=1,
             uuid="x",
             user_id=1,
             storage_disk="s3",

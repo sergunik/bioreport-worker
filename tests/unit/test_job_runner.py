@@ -16,7 +16,12 @@ def _make_runner(
 
 
 def _make_job(attempts: int = 0) -> JobRecord:
-    return JobRecord(id=1, uploaded_document_id=10, status="processing", attempts=attempts)
+    return JobRecord(
+        id=1,
+        uploaded_document_uuid="550e8400-e29b-41d4-a716-446655440000",
+        status="processing",
+        attempts=attempts,
+    )
 
 
 class TestSuccessfulProcessing:
@@ -26,7 +31,9 @@ class TestSuccessfulProcessing:
 
         runner.run(job)
 
-        mock_processor.process.assert_called_once_with(10, 1)
+        mock_processor.process.assert_called_once_with(
+            "550e8400-e29b-41d4-a716-446655440000", 1
+        )
 
     def test_marks_job_done(self) -> None:
         runner, _processor, mock_repo = _make_runner()

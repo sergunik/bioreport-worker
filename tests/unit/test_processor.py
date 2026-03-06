@@ -74,7 +74,7 @@ def _make_pipeline() -> tuple[
         ],
     )
 
-    doc_repo.find_by_id.return_value = document
+    doc_repo.find_by_uuid.return_value = document
     file_loader.load.return_value = b"%PDF-fake"
     pdf_extractor.extract.return_value = "Patient John Doe"
     doc_repo.get_sensitive_words.return_value = ["john", "doe"]
@@ -116,25 +116,25 @@ class TestProcessorPipeline:
             _make_pipeline()
         )
 
-        processor.process(uploaded_document_id=1, job_id=9)
+        processor.process(uploaded_document_uuid="abc-123", job_id=9)
 
         job_repo.mark_processing.assert_called_once_with(9)
-        doc_repo.find_by_id.assert_called_once_with(1)
+        doc_repo.find_by_uuid.assert_called_once_with("abc-123")
         file_loader.load.assert_called_once()
         pdf_extractor.extract.assert_called_once_with(b"%PDF-fake")
-        doc_repo.update_parsed_result.assert_called_once_with(1, "Patient John Doe")
+        doc_repo.update_parsed_result.assert_called_once_with("abc-123", "Patient John Doe")
         doc_repo.get_sensitive_words.assert_called_once_with(10)
         anonymizer.anonymize.assert_called_once_with(
             "Patient John Doe",
             sensitive_words=["john", "doe"],
         )
         doc_repo.update_anonymized_text.assert_called_once_with(
-            1,
+            "abc-123",
             anonymized_result="Patient PERSON_1",
             transliteration_mapping=[0, 1, 2],
         )
         doc_repo.update_artifacts_payload.assert_called_once_with(
-            1,
+            "abc-123",
             artifacts_payload={
                 "artifacts": [
                     {"type": "PERSON", "original": "John Doe", "replacement": "PERSON_1"}
@@ -143,7 +143,7 @@ class TestProcessorPipeline:
         )
         normalizer.normalize.assert_called_once_with("Patient PERSON_1")
         doc_repo.update_normalized_result.assert_called_once_with(
-            1,
+            "abc-123",
             normalized_result=asdict(normalizer.normalize.return_value),
         )
         doc_repo.update_final_result.assert_called_once()
@@ -154,7 +154,7 @@ class TestProcessorPipeline:
     def test_final_result_is_de_anonymized(self) -> None:
         processor, _loader, doc_repo, _pdf, _anon, _normalizer, _job_repo = _make_pipeline()
 
-        processor.process(uploaded_document_id=1, job_id=9)
+        processor.process(uploaded_document_uuid="abc-123", job_id=9)
 
         final_call = doc_repo.update_final_result.call_args
         final_result = final_call.kwargs["final_result"]
@@ -165,7 +165,7 @@ class TestProcessorPipeline:
         pdf_extractor.extract.side_effect = PdfExtractionError("bad pdf")
 
         with pytest.raises(PdfExtractionError, match="bad pdf"):
-            processor.process(uploaded_document_id=1, job_id=7)
+            processor.process(uploaded_document_uuid="abc-123", job_id=7)
 
         job_repo.mark_processing.assert_called_once_with(7)
         job_repo.mark_failed.assert_called_once_with(7, "bad pdf")
@@ -188,8 +188,8 @@ class TestProcessorPipeline:
         call_order: list[str] = []
 
         job_repo.mark_processing.side_effect = lambda *_: call_order.append("mark_processing")
-        doc_repo.find_by_id.side_effect = lambda *_: (
-            call_order.append("find_by_id"),
+        doc_repo.find_by_uuid.side_effect = lambda *_: (
+            call_order.append("find_by_uuid"),
             _make_document(),
         )[1]
         file_loader.load.side_effect = lambda *_: (call_order.append("load"), b"%PDF-fake")[1]
@@ -223,6 +223,6 @@ class TestProcessorPipeline:
             lambda *_args, **_kwargs: call_order.append("persist_final")
         )
 
-        processor.process(uploaded_document_id=1, job_id=7)
+        processor.process(uploaded_document_uuid="abc-123", job_id=7)
 
         assert call_order[0] == "mark_processing"

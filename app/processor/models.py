@@ -18,7 +18,7 @@ class UploadedDocument:
 class ProcessorResult:
     """Accumulates data as the document moves through pipeline steps."""
 
-    document_id: int
+    document_uuid: str
     raw_bytes: bytes = b""
     extracted_text: str = ""
     anonymized_text: str = ""

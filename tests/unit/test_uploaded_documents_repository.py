@@ -6,6 +6,8 @@ from app.database.repositories.uploaded_documents_repository import UploadedDocu
 from app.processor.exceptions import DocumentNotFoundError
 from app.processor.models import UploadedDocument
 
+NIL_UUID = "00000000-0000-0000-0000-000000000000"
+
 
 def _make_row() -> dict:
     return {
@@ -30,18 +32,19 @@ def _mock_connection(mock_get_conn: MagicMock) -> tuple[MagicMock, MagicMock]:
     return mock_conn, mock_cursor
 
 
-class TestFindById:
+class TestFindByUuid:
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_returns_uploaded_document_when_found(self, mock_get_conn: MagicMock) -> None:
         _conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.fetchone.return_value = _make_row()
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
-        result = repo.find_by_id(1)
+        result = repo.find_by_uuid(doc_uuid)
 
         assert isinstance(result, UploadedDocument)
         assert result.id == 1
-        assert result.uuid == "550e8400-e29b-41d4-a716-446655440000"
+        assert result.uuid == doc_uuid
         assert result.user_id == 10
         assert result.storage_disk == "local"
         assert result.mime_type == "application/pdf"
@@ -54,8 +57,8 @@ class TestFindById:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.find_by_id(999)
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.find_by_uuid(NIL_UUID)
 
 
 class TestGetSensitiveWords:
@@ -119,15 +122,16 @@ class TestUpdateParsedResult:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
-        repo.update_parsed_result(42, "extracted text")
+        repo.update_parsed_result(doc_uuid, "extracted text")
 
         mock_cursor.execute.assert_called_once()
         sql, params = mock_cursor.execute.call_args.args
         assert "UPDATE uploaded_documents" in sql
         assert "parsed_result" in sql
-        assert params == ("extracted text", 42)
+        assert params == ("extracted text", doc_uuid)
 
     @patch("app.database.repositories.uploaded_documents_repository.get_connection")
     def test_commits_transaction(self, mock_get_conn: MagicMock) -> None:
@@ -135,7 +139,7 @@ class TestUpdateParsedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_parsed_result(1, "text")
+        repo.update_parsed_result("550e8400-e29b-41d4-a716-446655440000", "text")
 
         mock_conn.commit.assert_called_once()
 
@@ -148,8 +152,8 @@ class TestUpdateParsedResult:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_parsed_result(999, "text")
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.update_parsed_result(NIL_UUID, "text")
 
 
 class TestUpdateAnonymizedText:
@@ -157,10 +161,11 @@ class TestUpdateAnonymizedText:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
         repo.update_anonymized_text(
-            42,
+            doc_uuid,
             anonymized_result="anon text",
             transliteration_mapping=[0, 1, 2],
         )
@@ -180,7 +185,7 @@ class TestUpdateAnonymizedText:
 
         repo = UploadedDocumentsRepository()
         repo.update_anonymized_text(
-            1,
+            "550e8400-e29b-41d4-a716-446655440000",
             anonymized_result="text",
             transliteration_mapping=None,
         )
@@ -195,7 +200,7 @@ class TestUpdateAnonymizedText:
 
         repo = UploadedDocumentsRepository()
         repo.update_anonymized_text(
-            1,
+            "550e8400-e29b-41d4-a716-446655440000",
             anonymized_result="text",
         )
 
@@ -210,11 +215,8 @@ class TestUpdateAnonymizedText:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_anonymized_text(
-                999,
-                anonymized_result="text",
-            )
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.update_anonymized_text(NIL_UUID, anonymized_result="text")
 
 
 class TestUpdateArtifactsPayload:
@@ -222,9 +224,10 @@ class TestUpdateArtifactsPayload:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
-        repo.update_artifacts_payload(42, artifacts_payload={"artifacts": []})
+        repo.update_artifacts_payload(doc_uuid, artifacts_payload={"artifacts": []})
 
         mock_cursor.execute.assert_called_once()
         sql, _params = mock_cursor.execute.call_args.args
@@ -239,7 +242,7 @@ class TestUpdateArtifactsPayload:
 
         with pytest.raises(ValueError, match="artifacts"):
             repo.update_artifacts_payload(
-                1,
+                "550e8400-e29b-41d4-a716-446655440000",
                 artifacts_payload={"artifacts": "not a list"},
             )
 
@@ -251,7 +254,9 @@ class TestUpdateArtifactsPayload:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_artifacts_payload(1, artifacts_payload={"artifacts": []})
+        repo.update_artifacts_payload(
+            "550e8400-e29b-41d4-a716-446655440000", artifacts_payload={"artifacts": []}
+        )
 
         mock_conn.commit.assert_called_once()
 
@@ -264,11 +269,8 @@ class TestUpdateArtifactsPayload:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_artifacts_payload(
-                999,
-                artifacts_payload={"artifacts": []},
-            )
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.update_artifacts_payload(NIL_UUID, artifacts_payload={"artifacts": []})
 
 
 class TestUpdateNormalizedResult:
@@ -276,9 +278,10 @@ class TestUpdateNormalizedResult:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
-        repo.update_normalized_result(42, normalized_result={"person": {"name": "P1"}})
+        repo.update_normalized_result(doc_uuid, normalized_result={"person": {"name": "P1"}})
 
         mock_cursor.execute.assert_called_once()
         sql, _params = mock_cursor.execute.call_args.args
@@ -291,7 +294,7 @@ class TestUpdateNormalizedResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_normalized_result(1, normalized_result={})
+        repo.update_normalized_result("550e8400-e29b-41d4-a716-446655440000", normalized_result={})
 
         mock_conn.commit.assert_called_once()
 
@@ -304,8 +307,8 @@ class TestUpdateNormalizedResult:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_normalized_result(999, normalized_result={})
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.update_normalized_result(NIL_UUID, normalized_result={})
 
 
 class TestUpdateFinalResult:
@@ -313,9 +316,10 @@ class TestUpdateFinalResult:
     def test_executes_update_query(self, mock_get_conn: MagicMock) -> None:
         _mock_conn, mock_cursor = _mock_connection(mock_get_conn)
         mock_cursor.rowcount = 1
+        doc_uuid = "550e8400-e29b-41d4-a716-446655440000"
 
         repo = UploadedDocumentsRepository()
-        repo.update_final_result(42, final_result={"person": {"name": "John"}})
+        repo.update_final_result(doc_uuid, final_result={"person": {"name": "John"}})
 
         mock_cursor.execute.assert_called_once()
         sql, _params = mock_cursor.execute.call_args.args
@@ -328,7 +332,7 @@ class TestUpdateFinalResult:
         mock_cursor.rowcount = 1
 
         repo = UploadedDocumentsRepository()
-        repo.update_final_result(1, final_result={})
+        repo.update_final_result("550e8400-e29b-41d4-a716-446655440000", final_result={})
 
         mock_conn.commit.assert_called_once()
 
@@ -341,5 +345,5 @@ class TestUpdateFinalResult:
 
         repo = UploadedDocumentsRepository()
 
-        with pytest.raises(DocumentNotFoundError, match="Document 999 not found"):
-            repo.update_final_result(999, final_result={})
+        with pytest.raises(DocumentNotFoundError, match=f"Document {NIL_UUID} not found"):
+            repo.update_final_result(NIL_UUID, final_result={})

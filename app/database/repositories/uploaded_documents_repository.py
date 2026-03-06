@@ -11,30 +11,30 @@ from app.processor.models import UploadedDocument
 class UploadedDocumentsRepository:
     """Database operations for the uploaded_documents table."""
 
-    def find_by_id(self, document_id: int) -> UploadedDocument:
-        """Find an uploaded document by ID.
+    def find_by_uuid(self, document_uuid: str) -> UploadedDocument:
+        """Find an uploaded document by UUID.
 
         Raises:
-            DocumentNotFoundError: if no document with this ID exists.
+            DocumentNotFoundError: if no document with this UUID exists.
         """
         with get_connection() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, uuid, user_id, storage_disk, file_size_bytes,
+                    SELECT uuid, user_id, storage_disk, file_size_bytes,
                            mime_type, file_hash_sha256
                     FROM uploaded_documents
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
-                    (document_id,),
+                    (document_uuid,),
                 )
                 row = cur.fetchone()
 
         if row is None:
-            raise DocumentNotFoundError(f"Document {document_id} not found")
+            raise DocumentNotFoundError(f"Document {document_uuid} not found")
 
         return UploadedDocument(
-            id=row["id"],
+            id=row.get("id", 0),
             uuid=str(row["uuid"]),
             user_id=row["user_id"],
             storage_disk=row["storage_disk"],
@@ -64,7 +64,7 @@ class UploadedDocumentsRepository:
 
     def update_anonymized_text(
         self,
-        document_id: int,
+        document_uuid: str,
         anonymized_result: str,
         transliteration_mapping: list[int] | None = None,
     ) -> None:
@@ -81,21 +81,21 @@ class UploadedDocumentsRepository:
                     UPDATE uploaded_documents
                     SET anonymised_result = %s,
                         transliteration_mapping = %s
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
                     (
                         anonymized_result,
                         transliteration_value,
-                        document_id,
+                        document_uuid,
                     ),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
+                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
             conn.commit()
 
     def update_artifacts_payload(
         self,
-        document_id: int,
+        document_uuid: str,
         artifacts_payload: dict[str, Any],
     ) -> None:
         """Persist anonymization artifacts payload."""
@@ -108,19 +108,19 @@ class UploadedDocumentsRepository:
                     """
                     UPDATE uploaded_documents
                     SET anonymised_artifacts = %s
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
-                    (Jsonb(artifacts_payload), document_id),
+                    (Jsonb(artifacts_payload), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
+                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
             conn.commit()
 
-    def update_parsed_result(self, document_id: int, parsed_result: str) -> None:
+    def update_parsed_result(self, document_uuid: str, parsed_result: str) -> None:
         """Persist extracted text into the parsed_result column.
 
         Raises:
-            DocumentNotFoundError: if no document with this ID exists.
+            DocumentNotFoundError: if no document with this UUID exists.
         """
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -128,23 +128,23 @@ class UploadedDocumentsRepository:
                     """
                     UPDATE uploaded_documents
                     SET parsed_result = %s
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
-                    (parsed_result, document_id),
+                    (parsed_result, document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
+                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
             conn.commit()
 
     def update_normalized_result(
         self,
-        document_id: int,
+        document_uuid: str,
         normalized_result: dict[str, Any],
     ) -> None:
         """Persist raw normalized JSON as returned by the AI provider.
 
         Raises:
-            DocumentNotFoundError: if no document with this ID exists.
+            DocumentNotFoundError: if no document with this UUID exists.
         """
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -152,23 +152,23 @@ class UploadedDocumentsRepository:
                     """
                     UPDATE uploaded_documents
                     SET normalized_result = %s
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
-                    (Jsonb(normalized_result), document_id),
+                    (Jsonb(normalized_result), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
+                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
             conn.commit()
 
     def update_final_result(
         self,
-        document_id: int,
+        document_uuid: str,
         final_result: dict[str, Any],
     ) -> None:
         """Persist de-anonymized final JSON output and mark processing complete.
 
         Raises:
-            DocumentNotFoundError: if no document with this ID exists.
+            DocumentNotFoundError: if no document with this UUID exists.
         """
         with get_connection() as conn:
             with conn.cursor() as cur:
@@ -177,10 +177,10 @@ class UploadedDocumentsRepository:
                     UPDATE uploaded_documents
                     SET final_result = %s,
                         processed_at = NOW()
-                    WHERE id = %s
+                    WHERE uuid = %s::uuid
                     """,
-                    (Jsonb(final_result), document_id),
+                    (Jsonb(final_result), document_uuid),
                 )
                 if cur.rowcount == 0:
-                    raise DocumentNotFoundError(f"Document {document_id} not found")
+                    raise DocumentNotFoundError(f"Document {document_uuid} not found")
             conn.commit()

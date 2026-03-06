@@ -12,7 +12,7 @@ class TestJobRepositoryClaimNextJob:
         job = repo.claim_next_job(db_conn)
         assert job is not None
         assert job.id == seed_job.id
-        assert job.uploaded_document_id == seed_job.uploaded_document_id
+        assert job.uploaded_document_uuid == seed_job.uploaded_document_uuid
         assert job.status == "processing"
         with db_conn.cursor() as cur:
             cur.execute(
@@ -32,14 +32,15 @@ class TestJobRepositoryClaimNextJob:
     def test_claim_next_job_skips_job_with_attempts_at_max(
         self, seed_document: tuple[int, str, int], db_conn, integration_cleanup
     ) -> None:
+        _document_id, doc_uuid, _ = seed_document
         with db_conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO pdf_jobs (uploaded_document_id, status, attempts)
-                VALUES (%s, 'pending', 3)
+                INSERT INTO pdf_jobs (uploaded_document_uuid, status, attempts)
+                VALUES (%s::uuid, 'pending', 3)
                 RETURNING id
                 """,
-                (seed_document[0],),
+                (doc_uuid,),
             )
             row = cur.fetchone()
             assert row is not None
@@ -146,7 +147,7 @@ class TestJobRepositoryFindById:
         job = repo.find_by_id(seed_job.id)
         assert job is not None
         assert job.id == seed_job.id
-        assert job.uploaded_document_id == seed_job.uploaded_document_id
+        assert job.uploaded_document_uuid == seed_job.uploaded_document_uuid
         assert job.status == "pending"
         assert job.attempts == 0
 

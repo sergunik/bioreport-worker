@@ -63,47 +63,49 @@ Reference ranges may appear as normal intervals OR diagnostic thresholds.
 4.1.1. Normal interval
 
 Example:
-3.5 – 5.5
+`3.5 – 5.5`
 
 Extraction:
+```
 min = 3.5
 max = 5.5
+```
 
 4.1.2. Upper bound
-If missed min value -> use 0.
 
 Example:
-< 5.0
+`< 5.0`
 
 Extraction:
-min = 0
+```
+min = null
 max = 5.0
+```
 
 4.1.3. Lower bound
-If missed max value -> use 100*min
 
 Example:
-≥ 3.5
+`≥ 3.5`
 
 Extraction:
+```
 min = 3.5
-max = 350
-
+max = null
+```
 
 4.1.4. Diagnostic threshold (negative / positive)
+In case of boolean meaning – identify negative reference range. Because `negative`, `absence`, `not detected` means healthy reference range.
 
 Example:
-
+```
 < 1.4 - negative  
 ≥ 1.4 - positive
+```
 
 Extraction:
-min = 0
+```
+min = null
 max = 1.4
-
-Rules:
-- The boundary between negative and positive defines the upper limit of the reference range.
-- Thresholds may appear on separate lines.
 
 4.2. UNITS
 
@@ -160,48 +162,51 @@ EXAMPLES
 Example 1
 
 Input
-
+```
 CRP 2.3 mg/L  
 Reference range: < 5.0 mg/L
+```
 
 Output reference_range
-
+```
 {
   "min": 0,
   "max": 5.0,
   "unit": "mg/L"
 }
-
+```
 
 Example 2
 
 Input
-
+```
 Hemoglobin 140 g/L  
 Reference interval: 120 – 160 g/L
+```
 
 Output reference_range
-
+```
 {
   "min": 120,
   "max": 160,
   "unit": "g/L"
 }
-
+```
 
 Example 3
 
 Input
-
+```
 SARS-CoV-2 IgG 6.92 Index
 
 < 1.4 - negative  
 ≥ 1.4 - positive
+```
 
 Output markers
-
+```
 {
-  "code": "94507-1",
+  "code": "94505-5",
   "name": "SARS-CoV-2 IgG",
   "value": {
     "type": "numeric",
@@ -216,6 +221,7 @@ Output markers
     "unit": "Index"
   }
 }
+```
 
 --------------------------------
 

@@ -42,7 +42,7 @@ class ReferenceRange:
 class Marker:
     """A single medical marker measurement."""
 
-    code: str
+    code: str | None
     name: str
     value: MarkerValue
     reference_range: ReferenceRange | None = None

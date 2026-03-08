@@ -113,10 +113,11 @@ def _build_markers(raw: Any) -> list[Marker]:
     markers: list[Marker] = []
     for i, item in enumerate(raw):
         marker = _build_marker(item, i)
-        code_upper = marker.code.upper()
-        if code_upper in seen_codes:
-            raise NormalizationValidationError(f"Duplicate marker code: {marker.code}")
-        seen_codes.add(code_upper)
+        if marker.code is not None and marker.code.strip():
+            code_upper = marker.code.upper()
+            if code_upper in seen_codes:
+                raise NormalizationValidationError(f"Duplicate marker code: {marker.code}")
+            seen_codes.add(code_upper)
         markers.append(marker)
     return markers
 
@@ -124,11 +125,12 @@ def _build_markers(raw: Any) -> list[Marker]:
 def _build_marker(raw: Any, index: int) -> Marker:
     if not isinstance(raw, dict):
         raise NormalizationValidationError(f"Marker at index {index} must be an object")
-    code = raw.get("code")
-    if not code or not isinstance(code, str):
+    code_raw = raw.get("code")
+    if code_raw is not None and not isinstance(code_raw, str):
         raise NormalizationValidationError(
-            f"Marker at index {index}: 'code' must be a non-empty string"
+            f"Marker at index {index}: 'code' must be a string or null"
         )
+    code = (code_raw.strip() or None) if isinstance(code_raw, str) else code_raw
     name = raw.get("name")
     if not name or not isinstance(name, str):
         raise NormalizationValidationError(

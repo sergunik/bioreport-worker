@@ -165,12 +165,12 @@ def _build_numeric_value(raw: dict[str, Any], marker_index: int) -> NumericValue
         raise NormalizationValidationError(
             f"Marker at index {marker_index}: 'value.number' must be a number"
         )
-    unit = raw.get("unit", "")
-    if not isinstance(unit, str):
+    unit = raw.get("unit")
+    if unit is not None and not isinstance(unit, str):
         raise NormalizationValidationError(
-            f"Marker at index {marker_index}: 'value.unit' must be a string"
+            f"Marker at index {marker_index}: 'value.unit' must be a string or null"
         )
-    return NumericValue(number=float(number), unit=unit)
+    return NumericValue(number=float(number), unit=unit if unit is not None else "")
 
 
 def _build_boolean_value(raw: dict[str, Any], marker_index: int) -> BooleanValue:
@@ -200,7 +200,7 @@ def _build_reference_range(raw: Any, marker_index: int) -> ReferenceRange | None
         )
     min_val = raw.get("min")
     max_val = raw.get("max")
-    unit = raw.get("unit", "")
+    unit = raw.get("unit")
     if min_val is not None and not isinstance(min_val, (int, float)):
         raise NormalizationValidationError(
             f"Marker at index {marker_index}: 'reference_range.min' must be a number or null"
@@ -209,12 +209,12 @@ def _build_reference_range(raw: Any, marker_index: int) -> ReferenceRange | None
         raise NormalizationValidationError(
             f"Marker at index {marker_index}: 'reference_range.max' must be a number or null"
         )
-    if not isinstance(unit, str):
+    if unit is not None and not isinstance(unit, str):
         raise NormalizationValidationError(
-            f"Marker at index {marker_index}: 'reference_range.unit' must be a string"
+            f"Marker at index {marker_index}: 'reference_range.unit' must be a string or null"
         )
     return ReferenceRange(
         min=float(min_val) if min_val is not None else None,
         max=float(max_val) if max_val is not None else None,
-        unit=unit,
+        unit=unit if unit is not None else "",
     )

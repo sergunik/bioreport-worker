@@ -20,27 +20,18 @@
           "type": "string"
         },
         "dob": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "format": "date"
         }
       },
       "additionalProperties": false
     },
     "diagnostic_date": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "format": "date"
     },
     "language": {
-      "type": [
-        "string",
-        "null"
-      ]
+      "type": ["string", "null"]
     },
     "diagnostic_title": {
       "type": "string",
@@ -59,8 +50,7 @@
         ],
         "properties": {
           "code": {
-            "type": "string",
-            "minLength": 1
+            "type": ["string", "null"]
           },
           "name": {
             "type": "string",
@@ -85,37 +75,22 @@
                 ]
               },
               "number": {
-                "type": [
-                  "number",
-                  "null"
-                ]
+                "type": ["number", "null"]
               },
               "unit": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               },
               "value": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
+                "type": ["boolean", "null"]
               },
               "text": {
-                "type": [
-                  "string",
-                  "null"
-                ]
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false
           },
           "reference_range": {
-            "type": [
-              "object",
-              "null"
-            ],
+            "type": ["object", "null"],
             "required": [
               "min",
               "max",
@@ -123,19 +98,13 @@
             ],
             "properties": {
               "min": {
-                "type": [
-                  "number",
-                  "null"
-                ]
+                "type": ["number", "null"]
               },
               "max": {
-                "type": [
-                  "number",
-                  "null"
-                ]
+                "type": ["number", "null"]
               },
               "unit": {
-                "type": "string"
+                "type": ["string", "null"]
               }
             },
             "additionalProperties": false

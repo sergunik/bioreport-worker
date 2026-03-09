@@ -278,17 +278,24 @@ class TestMarkersValidation:
         with pytest.raises(NormalizationValidationError, match=r"index 0.*object"):
             validate_and_build(data)
 
-    def test_marker_missing_code(self) -> None:
+    def test_marker_missing_code_accepted_as_null(self) -> None:
         data = _valid_data(markers=[{"name": "Test", "value": {"type": "text", "text": "x"}}])
-        with pytest.raises(NormalizationValidationError, match=r"code.*non-empty"):
-            validate_and_build(data)
+        result = validate_and_build(data)
+        assert result.markers[0].code is None
 
-    def test_marker_empty_code(self) -> None:
+    def test_marker_null_code_accepted(self) -> None:
+        data = _valid_data(markers=[
+            {"code": None, "name": "Test", "value": {"type": "text", "text": "x"}},
+        ])
+        result = validate_and_build(data)
+        assert result.markers[0].code is None
+
+    def test_marker_empty_code_normalized_to_null(self) -> None:
         data = _valid_data(markers=[
             {"code": "", "name": "Test", "value": {"type": "text", "text": "x"}},
         ])
-        with pytest.raises(NormalizationValidationError, match=r"code.*non-empty"):
-            validate_and_build(data)
+        result = validate_and_build(data)
+        assert result.markers[0].code is None
 
     def test_marker_missing_name(self) -> None:
         data = _valid_data(markers=[{"code": "X", "value": {"type": "text", "text": "x"}}])
